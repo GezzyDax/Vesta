@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}Data Versions - Vesta{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1><i class="bi bi-clock-history"></i> Data Versions</h1>
+        <p class="text-muted">History of data changes and imports</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('main.import_bank_statement') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> New Import
+        </a>
+    </div>
+</div>
+
+<!-- Versions List -->
+<div class="row">
+    <div class="col-12">
+        {% if versions.items %}
+            <div class="timeline">
+                {% for version in versions.items %}
+                <div class="card mb-3 {% if version.is_current %}border-success{% endif %}">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-1 text-center">
+                                <div class="version-icon">
+                                    {% if version.is_current %}
+                                        <i class="bi bi-star-fill text-warning fs-3"></i>
+                                    {% else %}
+                                        <i class="bi bi-clock-history text-muted fs-3"></i>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-7">
+                                <h5 class="mb-1">
+                                    {{ version.version_name }}
+                                    {% if version.is_current %}
+                                        <span class="badge bg-success ms-2">Current</span>
+                                    {% endif %}
+                                </h5>
+                                <p class="text-muted mb-2">{{ version.description or 'No description provided' }}</p>
+                                
+                                {% set summary = version.get_changes_summary() %}
+                                <div class="d-flex gap-3">
+                                    <small class="text-muted">
+                                        <i class="bi bi-list-ul"></i> {{ summary.transactions_count }} transactions
+                                    </small>
+                                    <small class="text-muted">
+                                        <i class="bi bi-credit-card"></i> {{ summary.accounts_affected }} accounts affected
+                                    </small>
+                                    <small class="text-muted">
+                                        <i class="bi bi-calendar"></i> {{ version.created_at.strftime('%d %b %Y at %H:%M') }}
+                                    </small>
+                                    <small class="text-muted">
+                                        <i class="bi bi-person"></i> {{ version.created_by }}
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <div class="btn-group">
+                                    <a href="{{ url_for('main.version_details', version_id=version.id) }}" 
+                                       class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-eye"></i> View Details
+                                    </a>
+                                    
+                                    {% if not version.is_current %}
+                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle dropdown-toggle-split" 
+                                            type="button" data-bs-toggle="dropdown">
+                                        <span class="visually-hidden">More options</span>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <button class="dropdown-item text-warning" 
+                                                    onclick="showRestoreModal({{ version.id }}, '{{ version.version_name }}')">
+                                                <i class="bi bi-arrow-counterclockwise"></i> Restore to this version
+                                            </button>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <a class="dropdown-item" href="{{ url_for('main.version_details', version_id=version.id) }}">
+                                                <i class="bi bi-info-circle"></i> Compare with current
+                                            </a>
+                                        </li>
+                                    </ul>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Version Timeline Line -->
+                        {% if not loop.last %}
+                        <div class="timeline-line"></div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-clock-history display-1 text-muted mb-3"></i>
+                    <h4>No versions found</h4>
+                    <p class="text-muted">Start by importing some bank statements to create your first data version.</p>
+                    <a href="{{ url_for('main.import_bank_statement') }}" class="btn btn-primary">
+                        <i class="bi bi-upload"></i> Import Now
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if versions.pages > 1 %}
+<div class="d-flex justify-content-between align-items-center mt-4">
+    <div>
+        Showing {{ versions.per_page * (versions.page - 1) + 1 }} to 
+        {{ versions.per_page * versions.page if versions.page < versions.pages else versions.total }} 
+        of {{ versions.total }} versions
+    </div>
+    
+    <nav>
+        <ul class="pagination">
+            {% if versions.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('main.data_versions', page=versions.prev_num) }}">Previous</a>
+                </li>
+            {% endif %}
+            
+            {% for page_num in versions.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                {% if page_num %}
+                    {% if page_num != versions.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('main.data_versions', page=page_num) }}">{{ page_num }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                    {% endif %}
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">…</span>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if versions.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('main.data_versions', page=versions.next_num) }}">Next</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
+
+<!-- Restore Version Modal -->
+<div class="modal fade" id="restoreModal" tabindex="-1" aria-labelledby="restoreModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="restoreModalLabel">
+                    <i class="bi bi-exclamation-triangle text-warning"></i> Restore Data Version
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Warning:</strong> This action will restore your data to a previous state. 
+                    All transactions and changes made after this version will be lost.
+                </div>
+                
+                <p>Are you sure you want to restore to version:</p>
+                <p class="fw-bold" id="versionName"></p>
+                
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="confirmRestore" required>
+                    <label class="form-check-label" for="confirmRestore">
+                        I understand that this action cannot be undone
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" id="restoreForm" class="d-inline">
+                    <button type="submit" class="btn btn-warning" id="restoreButton" disabled>
+                        <i class="bi bi-arrow-counterclockwise"></i> Restore Version
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+.timeline-line {
+    position: absolute;
+    left: 3.5rem;
+    top: 100%;
+    width: 2px;
+    height: 2rem;
+    background-color: #dee2e6;
+    z-index: 0;
+}
+
+.version-icon {
+    position: relative;
+    z-index: 1;
+}
+
+.card {
+    position: relative;
+}
+</style>
+
+<script>
+function showRestoreModal(versionId, versionName) {
+    document.getElementById('versionName').textContent = versionName;
+    document.getElementById('restoreForm').action = '{{ url_for("main.restore_version", version_id="__ID__") }}'.replace('__ID__', versionId);
+    
+    const modal = new bootstrap.Modal(document.getElementById('restoreModal'));
+    modal.show();
+}
+
+document.getElementById('confirmRestore').addEventListener('change', function() {
+    document.getElementById('restoreButton').disabled = !this.checked;
+});
+</script>
+{% endblock %}

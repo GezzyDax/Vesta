@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Import Bank Statement - Vesta{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1><i class="bi bi-file-earmark-arrow-up"></i> Import Bank Statement</h1>
+        <p class="text-muted">Upload your bank statement to automatically import transactions</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('main.transactions') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Transactions
+        </a>
+    </div>
+</div>
+
+<!-- Import Form -->
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-cloud-upload"></i> Upload Bank Statement</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <!-- File Upload -->
+                    <div class="mb-4">
+                        <label class="form-label">Bank Statement File *</label>
+                        <input type="file" name="statement_file" class="form-control" 
+                               accept=".xlsx,.csv,.pdf" required>
+                        <div class="form-text">
+                            Supported formats: XLSX (Alpha Bank), CSV (Raiffeisen), PDF (Sberbank)
+                        </div>
+                    </div>
+
+                    <!-- Bank Selection -->
+                    <div class="mb-4">
+                        <label class="form-label">Bank Type</label>
+                        <select name="bank_type" class="form-select">
+                            <option value="">Auto-detect from file</option>
+                            {% for bank in supported_banks %}
+                            <option value="{{ bank.code }}">{{ bank.name }} ({{ bank.format }})</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Leave empty to auto-detect based on file format</div>
+                    </div>
+
+                    <!-- Default Account -->
+                    <div class="mb-4">
+                        <label class="form-label">Default Account *</label>
+                        <select name="default_account_id" class="form-select" required>
+                            <option value="">Select account for imported transactions</option>
+                            {% for user in users %}
+                                <optgroup label="{{ user.name }}">
+                                    {% for account in accounts %}
+                                        {% if account.user_id == user.id %}
+                                        <option value="{{ account.id }}">
+                                            {{ account.name }} ({{ account.get_account_type_display() }}) 
+                                            - {{ "{:,.2f}".format(account.balance) }} ₽
+                                        </option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </optgroup>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">
+                            Transactions will be associated with this account and balance will be updated
+                        </div>
+                    </div>
+
+                    <!-- Import Options -->
+                    <div class="mb-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6><i class="bi bi-info-circle"></i> Import Settings</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="skip_duplicates" checked disabled>
+                                    <label class="form-check-label" for="skip_duplicates">
+                                        Skip duplicate transactions
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="auto_categorize" checked disabled>
+                                    <label class="form-check-label" for="auto_categorize">
+                                        Auto-categorize transactions
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="update_balance" checked disabled>
+                                    <label class="form-check-label" for="update_balance">
+                                        Update account balance
+                                    </label>
+                                </div>
+                                <small class="text-muted">These options are automatically enabled for safety</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-cloud-upload"></i> Import Transactions
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Supported Banks Info -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="bi bi-bank"></i> Supported Banks & Formats</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for bank in supported_banks %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <h6>{{ bank.name }}</h6>
+                                <span class="badge bg-primary">{{ bank.format }}</span>
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        {% if bank.code == 'alpha' %}
+                                            Excel format with transaction details
+                                        {% elif bank.code == 'raiffeisen' %}
+                                            CSV format with semicolon delimiter
+                                        {% elif bank.code == 'sberbank' %}
+                                            PDF format with transaction list
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <hr>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="bi bi-shield-check"></i> Import Safety</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-check-circle text-success"></i> Duplicate detection</li>
+                            <li><i class="bi bi-check-circle text-success"></i> Data validation</li>
+                            <li><i class="bi bi-check-circle text-success"></i> Automatic rollback on errors</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="bi bi-gear"></i> Smart Features</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-check-circle text-success"></i> Auto-categorization</li>
+                            <li><i class="bi bi-check-circle text-success"></i> Balance synchronization</li>
+                            <li><i class="bi bi-check-circle text-success"></i> Format auto-detection</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// File upload validation
+document.querySelector('input[type="file"]').addEventListener('change', function() {
+    const file = this.files[0];
+    if (file) {
+        const fileSize = file.size / 1024 / 1024; // MB
+        const maxSize = 10; // 10MB
+        
+        if (fileSize > maxSize) {
+            alert('File size too large. Please upload files smaller than 10MB.');
+            this.value = '';
+            return;
+        }
+        
+        // Auto-detect bank type based on extension
+        const bankTypeSelect = document.querySelector('select[name="bank_type"]');
+        const filename = file.name.toLowerCase();
+        
+        if (filename.endsWith('.xlsx')) {
+            bankTypeSelect.value = 'alpha';
+        } else if (filename.endsWith('.csv')) {
+            bankTypeSelect.value = 'raiffeisen';
+        } else if (filename.endsWith('.pdf')) {
+            bankTypeSelect.value = 'sberbank';
+        }
+    }
+});
+
+// Form submission with loading indicator
+document.querySelector('form').addEventListener('submit', function() {
+    const button = this.querySelector('button[type="submit"]');
+    button.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
+    button.disabled = true;
+});
+</script>
+{% endblock %}

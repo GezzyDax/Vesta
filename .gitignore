@@ -42,3 +42,6 @@ build/
 
 # Docker
 .dockerignore
+
+# Claude
+.claude/

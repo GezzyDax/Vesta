@@ -80,6 +80,16 @@
                             <i class="bi bi-plus-circle"></i> Add Transaction
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.import_bank_statement') }}">
+                            <i class="bi bi-file-earmark-arrow-up"></i> Import
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'main.data_versions' %}active{% endif %}" href="{{ url_for('main.data_versions') }}">
+                            <i class="bi bi-clock-history"></i> Versions
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -105,7 +115,18 @@
     <!-- Футер -->
     <div class="footer text-center">
         <div class="container">
-            <small>&copy; 2025 Vesta. Taking control of your family finances.</small>
+            <div class="row">
+                <div class="col-md-6 text-md-start text-center">
+                    <small>&copy; 2025 Vesta. Taking control of your family finances.</small>
+                </div>
+                <div class="col-md-6 text-md-end text-center">
+                    <small>
+                        <a href="{{ url_for('main.about') }}" class="text-muted text-decoration-none">
+                            {{ app_version }}
+                        </a>
+                    </small>
+                </div>
+            </div>
         </div>
     </div>
 

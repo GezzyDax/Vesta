@@ -171,3 +171,135 @@ class Transaction(db.Model):
                 stats['total_transfers'] += float(transaction.amount)
         
         return stats
+
+
+class DataVersion(db.Model):
+    """Модель для системы версионирования данных"""
+    __tablename__ = 'data_versions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    version_name = db.Column(db.String(200), nullable=False)  # "v1a2b3c4: Add Alpha Bank import"
+    description = db.Column(db.Text)  # Описание изменений
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.String(100), default='System')
+    is_current = db.Column(db.Boolean, default=False)  # Текущая версия
+    
+    # Git-related fields
+    git_commit_hash = db.Column(db.String(40))  # Full commit hash
+    git_short_hash = db.Column(db.String(10))   # Short commit hash
+    git_branch = db.Column(db.String(100))      # Branch name
+    git_tag = db.Column(db.String(100))         # Git tag if exists
+    git_author = db.Column(db.String(100))      # Commit author
+    git_commit_date = db.Column(db.DateTime)    # Commit date
+    git_commit_message = db.Column(db.Text)     # Original commit message
+    
+    # Version type
+    version_type = db.Column(db.String(20), default='manual')  # 'manual', 'import', 'git_auto'
+    
+    # Связи
+    transaction_snapshots = db.relationship('TransactionSnapshot', backref='version', lazy='dynamic', cascade='all, delete-orphan')
+    account_snapshots = db.relationship('AccountSnapshot', backref='version', lazy='dynamic', cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<DataVersion {self.version_name} ({self.created_at})>'
+    
+    def get_changes_summary(self):
+        """Получить краткое описание изменений в версии"""
+        transactions_count = self.transaction_snapshots.count()
+        accounts_affected = len(set(snap.account_id for snap in self.account_snapshots.all() if snap.account_id))
+        
+        return {
+            'transactions_count': transactions_count,
+            'accounts_affected': accounts_affected,
+            'created_at': self.created_at,
+            'description': self.description
+        }
+
+
+class TransactionSnapshot(db.Model):
+    """Снимок транзакции для версионирования"""
+    __tablename__ = 'transaction_snapshots'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    version_id = db.Column(db.Integer, db.ForeignKey('data_versions.id'), nullable=False)
+    transaction_id = db.Column(db.Integer, db.ForeignKey('transactions.id'), nullable=True)  # None для удаленных
+    operation_type = db.Column(db.String(20), nullable=False)  # 'created', 'updated', 'deleted'
+    
+    # Данные транзакции на момент снимка
+    date = db.Column(db.Date, nullable=False)
+    amount = db.Column(db.Numeric(15, 2), nullable=False)
+    description = db.Column(db.Text)
+    transaction_type = db.Column(db.String(20), nullable=False)
+    category_id = db.Column(db.Integer, nullable=False)
+    from_account_id = db.Column(db.Integer, nullable=True)
+    to_account_id = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False)
+    
+    # Связи
+    transaction = db.relationship('Transaction', backref='snapshots')
+    
+    def __repr__(self):
+        return f'<TransactionSnapshot {self.amount} {self.operation_type}>'
+
+
+class AccountSnapshot(db.Model):
+    """Снимок баланса счета для версионирования"""
+    __tablename__ = 'account_snapshots'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    version_id = db.Column(db.Integer, db.ForeignKey('data_versions.id'), nullable=False)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=False)
+    
+    # Данные баланса на момент снимка
+    balance_before = db.Column(db.Numeric(15, 2), nullable=False)
+    balance_after = db.Column(db.Numeric(15, 2), nullable=False)
+    balance_change = db.Column(db.Numeric(15, 2), nullable=False)
+    
+    # Связи
+    account = db.relationship('Account', backref='balance_snapshots')
+    
+    def __repr__(self):
+        return f'<AccountSnapshot {self.account_id}: {self.balance_before} -> {self.balance_after}>'
+
+
+class ImportPreview(db.Model):
+    """Модель для предпросмотра импорта"""
+    __tablename__ = 'import_previews'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.String(100), nullable=False)  # Уникальный ID сессии импорта
+    filename = db.Column(db.String(200), nullable=False)
+    bank_type = db.Column(db.String(50), nullable=False)
+    default_account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=False)
+    total_transactions = db.Column(db.Integer, default=0)
+    duplicates_found = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=False)  # Время истечения превью
+    
+    # Связи
+    default_account = db.relationship('Account')
+    preview_transactions = db.relationship('ImportPreviewTransaction', backref='preview', lazy='dynamic', cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<ImportPreview {self.filename} ({self.total_transactions} transactions)>'
+
+
+class ImportPreviewTransaction(db.Model):
+    """Транзакция в предпросмотре импорта"""
+    __tablename__ = 'import_preview_transactions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    preview_id = db.Column(db.Integer, db.ForeignKey('import_previews.id'), nullable=False)
+    
+    # Данные транзакции
+    date = db.Column(db.Date, nullable=False)
+    amount = db.Column(db.Numeric(15, 2), nullable=False)
+    description = db.Column(db.Text)
+    transaction_type = db.Column(db.String(20), nullable=False)
+    category_name = db.Column(db.String(100), nullable=False)
+    is_duplicate = db.Column(db.Boolean, default=False)
+    duplicate_reason = db.Column(db.String(200))  # Причина дубликата
+    status = db.Column(db.String(20), default='pending')  # 'pending', 'selected', 'excluded'
+    
+    def __repr__(self):
+        return f'<ImportPreviewTransaction {self.amount} {self.category_name}>'

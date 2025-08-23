@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}{{ version.version_name }} - Version Details - Vesta{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1><i class="bi bi-info-circle"></i> Version Details</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('main.data_versions') }}">Data Versions</a></li>
+                <li class="breadcrumb-item active">{{ version.version_name }}</li>
+            </ol>
+        </nav>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('main.data_versions') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Versions
+        </a>
+    </div>
+</div>
+
+<!-- Version Summary -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card {% if version.is_current %}border-success{% endif %}">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-tag"></i> {{ version.version_name }}
+                    {% if version.is_current %}
+                        <span class="badge bg-success ms-2">Current Version</span>
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Description:</strong> {{ version.description or 'No description provided' }}</p>
+                        <p><strong>Created:</strong> {{ version.created_at.strftime('%d %B %Y at %H:%M:%S') }}</p>
+                        <p><strong>Created By:</strong> {{ version.created_by }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-list-ul fs-4 text-primary me-3"></i>
+                                    <div>
+                                        <div class="fw-bold">{{ changes_summary.transactions_count }}</div>
+                                        <small class="text-muted">Transactions</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-credit-card fs-4 text-info me-3"></i>
+                                    <div>
+                                        <div class="fw-bold">{{ changes_summary.accounts_affected }}</div>
+                                        <small class="text-muted">Accounts Affected</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Account Balance Changes -->
+{% if account_snapshots %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-bank"></i> Account Balance Changes</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Account</th>
+                                <th>Owner</th>
+                                <th>Balance Before</th>
+                                <th>Balance After</th>
+                                <th>Change</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for snapshot in account_snapshots %}
+                            <tr>
+                                <td>{{ snapshot.account.name }}</td>
+                                <td>{{ snapshot.account.owner.name }}</td>
+                                <td>{{ "{:,.2f}".format(snapshot.balance_before) }} ₽</td>
+                                <td>{{ "{:,.2f}".format(snapshot.balance_after) }} ₽</td>
+                                <td>
+                                    <span class="fw-bold {% if snapshot.balance_change >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        {% if snapshot.balance_change >= 0 %}+{% endif %}{{ "{:,.2f}".format(snapshot.balance_change) }} ₽
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Transaction Changes -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="bi bi-list-check"></i> Transaction Changes</h5>
+                <div class="btn-group" role="group">
+                    <input type="radio" class="btn-check" name="operationType" id="all" autocomplete="off" checked>
+                    <label class="btn btn-outline-primary btn-sm" for="all">All</label>
+
+                    <input type="radio" class="btn-check" name="operationType" id="created" autocomplete="off">
+                    <label class="btn btn-outline-success btn-sm" for="created">Created</label>
+
+                    <input type="radio" class="btn-check" name="operationType" id="updated" autocomplete="off">
+                    <label class="btn btn-outline-warning btn-sm" for="updated">Updated</label>
+
+                    <input type="radio" class="btn-check" name="operationType" id="deleted" autocomplete="off">
+                    <label class="btn btn-outline-danger btn-sm" for="deleted">Deleted</label>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if transaction_snapshots %}
+                <div class="table-responsive">
+                    <table class="table table-striped mb-0" id="transactionsTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th width="100">Operation</th>
+                                <th width="100">Date</th>
+                                <th width="150">Amount</th>
+                                <th width="100">Type</th>
+                                <th width="150">Category</th>
+                                <th>Description</th>
+                                <th width="200">Account</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for snapshot in transaction_snapshots %}
+                            <tr class="transaction-row" data-operation="{{ snapshot.operation_type }}">
+                                <td>
+                                    <span class="badge bg-{% if snapshot.operation_type == 'created' %}success{% elif snapshot.operation_type == 'updated' %}warning{% else %}danger{% endif %}">
+                                        {{ snapshot.operation_type.title() }}
+                                    </span>
+                                </td>
+                                <td>{{ snapshot.date.strftime('%d.%m.%Y') }}</td>
+                                <td>
+                                    <span class="fw-bold {% if snapshot.transaction_type == 'income' %}text-success{% else %}text-danger{% endif %}">
+                                        {% if snapshot.transaction_type == 'income' %}+{% else %}-{% endif %}{{ "{:,.2f}".format(snapshot.amount) }} ₽
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{% if snapshot.transaction_type == 'income' %}success{% else %}danger{% endif %}">
+                                        {{ snapshot.transaction_type.title() }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if snapshot.category_id %}
+                                        {% set category = snapshot.transaction.category if snapshot.transaction else None %}
+                                        {% if category %}
+                                            {{ category.name }}
+                                        {% else %}
+                                            Category ID: {{ snapshot.category_id }}
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">Unknown</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="text-truncate" style="max-width: 300px;" title="{{ snapshot.description }}">
+                                        {{ snapshot.description }}
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if snapshot.transaction_type == 'income' and snapshot.to_account_id %}
+                                        {% set account = snapshot.transaction.to_account if snapshot.transaction else None %}
+                                        <span class="text-success">
+                                            → {% if account %}{{ account.owner.name }}: {{ account.name }}{% else %}Account ID: {{ snapshot.to_account_id }}{% endif %}
+                                        </span>
+                                    {% elif snapshot.transaction_type == 'expense' and snapshot.from_account_id %}
+                                        {% set account = snapshot.transaction.from_account if snapshot.transaction else None %}
+                                        <span class="text-danger">
+                                            {% if account %}{{ account.owner.name }}: {{ account.name }}{% else %}Account ID: {{ snapshot.from_account_id }}{% endif %} →
+                                        </span>
+                                    {% elif snapshot.transaction_type == 'transfer' %}
+                                        {% set from_account = snapshot.transaction.from_account if snapshot.transaction else None %}
+                                        {% set to_account = snapshot.transaction.to_account if snapshot.transaction else None %}
+                                        <span class="text-info">
+                                            {% if from_account %}{{ from_account.owner.name }}: {{ from_account.name }}{% else %}ID: {{ snapshot.from_account_id }}{% endif %}
+                                            →
+                                            {% if to_account %}{{ to_account.owner.name }}: {{ to_account.name }}{% else %}ID: {{ snapshot.to_account_id }}{% endif %}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-info-circle display-4 text-muted"></i>
+                    <h5 class="mt-3">No transaction changes in this version</h5>
+                    <p class="text-muted">This version doesn't contain any transaction modifications.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Filter transactions by operation type
+document.addEventListener('DOMContentLoaded', function() {
+    const filterButtons = document.querySelectorAll('input[name="operationType"]');
+    const transactionRows = document.querySelectorAll('.transaction-row');
+    
+    filterButtons.forEach(button => {
+        button.addEventListener('change', function() {
+            const filterType = this.id;
+            
+            transactionRows.forEach(row => {
+                const operationType = row.getAttribute('data-operation');
+                
+                if (filterType === 'all' || operationType === filterType) {
+                    row.style.display = 'table-row';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

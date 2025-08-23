@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}Import Preview - Vesta{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1><i class="bi bi-file-earmark-check"></i> Import Preview</h1>
+        <p class="text-muted">Review transactions before importing from {{ preview.filename }}</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('main.import_bank_statement') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Import
+        </a>
+    </div>
+</div>
+
+<!-- Import Summary -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h5><i class="bi bi-info-circle"></i> Import Summary</h5>
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <i class="bi bi-file-text fs-3 text-primary"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold">{{ summary.total }}</div>
+                                <small class="text-muted">Total Transactions</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <i class="bi bi-check-circle fs-3 text-success"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold">{{ summary.selected }}</div>
+                                <small class="text-muted">Selected</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <i class="bi bi-x-circle fs-3 text-warning"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold">{{ summary.excluded }}</div>
+                                <small class="text-muted">Excluded</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <i class="bi bi-files fs-3 text-danger"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold">{{ summary.duplicates }}</div>
+                                <small class="text-muted">Duplicates</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <strong>Bank:</strong> {{ preview.bank_type.title() }} Bank
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Target Account:</strong> {{ preview.default_account.owner.name }}: {{ preview.default_account.name }}
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Balance Impact:</strong> 
+                        <span class="fw-bold {% if summary.total_amount_selected >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            {{ "{:+,.2f}".format(summary.income_amount - summary.expense_amount) }} ₽
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex gap-2">
+            <form method="POST" action="{{ url_for('main.import_confirm') }}" class="d-inline">
+                <input type="hidden" name="session_id" value="{{ preview.session_id }}">
+                <button type="submit" class="btn btn-success btn-lg" 
+                        {% if summary.selected == 0 %}disabled{% endif %}>
+                    <i class="bi bi-download"></i> Confirm Import ({{ summary.selected }} transactions)
+                </button>
+            </form>
+            
+            <button class="btn btn-outline-primary" onclick="selectAll(true)">
+                <i class="bi bi-check-all"></i> Select All
+            </button>
+            
+            <button class="btn btn-outline-secondary" onclick="selectAll(false)">
+                <i class="bi bi-x-square"></i> Deselect All
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Transactions Table -->
+<div class="card">
+    <div class="card-header">
+        <h5><i class="bi bi-list"></i> Transactions to Import</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th width="50">
+                            <input type="checkbox" id="selectAllCheckbox" onchange="selectAll(this.checked)">
+                        </th>
+                        <th width="100">Date</th>
+                        <th width="150">Amount</th>
+                        <th width="100">Type</th>
+                        <th width="150">Category</th>
+                        <th>Description</th>
+                        <th width="100">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions.items %}
+                    <tr class="{% if transaction.is_duplicate %}table-danger{% elif transaction.status == 'excluded' %}table-warning{% endif %}">
+                        <td>
+                            {% if not transaction.is_duplicate %}
+                            <input type="checkbox" 
+                                   class="transaction-checkbox" 
+                                   data-transaction-id="{{ transaction.id }}"
+                                   {% if transaction.status == 'selected' %}checked{% endif %}>
+                            {% else %}
+                            <i class="bi bi-files text-danger" title="Duplicate transaction"></i>
+                            {% endif %}
+                        </td>
+                        <td>{{ transaction.date.strftime('%d.%m.%Y') }}</td>
+                        <td>
+                            <span class="fw-bold {% if transaction.transaction_type == 'income' %}text-success{% else %}text-danger{% endif %}">
+                                {% if transaction.transaction_type == 'income' %}+{% else %}-{% endif %}{{ "{:,.2f}".format(transaction.amount) }} ₽
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-{% if transaction.transaction_type == 'income' %}success{% else %}danger{% endif %}">
+                                {% if transaction.transaction_type == 'income' %}Income{% else %}Expense{% endif %}
+                            </span>
+                        </td>
+                        <td>{{ transaction.category_name }}</td>
+                        <td>
+                            <div class="text-truncate" style="max-width: 300px;" title="{{ transaction.description }}">
+                                {{ transaction.description }}
+                            </div>
+                        </td>
+                        <td>
+                            {% if transaction.is_duplicate %}
+                                <span class="badge bg-danger">Duplicate</span>
+                                {% if transaction.duplicate_reason %}
+                                <br><small class="text-muted">{{ transaction.duplicate_reason }}</small>
+                                {% endif %}
+                            {% elif transaction.status == 'selected' %}
+                                <span class="badge bg-success">Selected</span>
+                            {% else %}
+                                <span class="badge bg-warning">Excluded</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if transactions.pages > 1 %}
+<div class="d-flex justify-content-between align-items-center mt-4">
+    <div>
+        Showing {{ transactions.per_page * (transactions.page - 1) + 1 }} to 
+        {{ transactions.per_page * transactions.page if transactions.page < transactions.pages else transactions.total }} 
+        of {{ transactions.total }} transactions
+    </div>
+    
+    <nav>
+        <ul class="pagination">
+            {% if transactions.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('main.import_preview', session_id=preview.session_id, page=transactions.prev_num) }}">Previous</a>
+                </li>
+            {% endif %}
+            
+            {% for page_num in transactions.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                {% if page_num %}
+                    {% if page_num != transactions.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('main.import_preview', session_id=preview.session_id, page=page_num) }}">{{ page_num }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                    {% endif %}
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">…</span>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if transactions.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('main.import_preview', session_id=preview.session_id, page=transactions.next_num) }}">Next</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function selectAll(checked) {
+    const checkboxes = document.querySelectorAll('.transaction-checkbox');
+    checkboxes.forEach(checkbox => {
+        if (checkbox.checked !== checked) {
+            checkbox.checked = checked;
+            toggleTransaction(checkbox.dataset.transactionId, checked);
+        }
+    });
+    
+    document.getElementById('selectAllCheckbox').checked = checked;
+    updateSummary();
+}
+
+function toggleTransaction(transactionId, forceStatus = null) {
+    fetch('{{ url_for("main.toggle_preview_transaction") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            transaction_id: transactionId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            updateSummary();
+        } else {
+            console.error('Error toggling transaction:', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+function updateSummary() {
+    // This would ideally reload the summary statistics
+    // For now, we'll just refresh the page after a short delay
+    setTimeout(() => {
+        window.location.reload();
+    }, 500);
+}
+
+// Add event listeners to checkboxes
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.transaction-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            toggleTransaction(this.dataset.transactionId);
+        });
+    });
+});
+</script>
+{% endblock %}
