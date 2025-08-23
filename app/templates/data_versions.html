@@ -223,7 +223,7 @@
 <script>
 function showRestoreModal(versionId, versionName) {
     document.getElementById('versionName').textContent = versionName;
-    document.getElementById('restoreForm').action = '{{ url_for("main.restore_version", version_id="__ID__") }}'.replace('__ID__', versionId);
+    document.getElementById('restoreForm').action = '/versions/restore/' + versionId;
     
     const modal = new bootstrap.Modal(document.getElementById('restoreModal'));
     modal.show();

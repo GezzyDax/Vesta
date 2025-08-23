@@ -55,6 +55,28 @@ class AppVersion:
     
     def _get_git_info(self) -> Dict[str, str]:
         """Get git information"""
+        # First try to read from build_info.json (Docker build)
+        build_info_path = Path("build_info.json")
+        if build_info_path.exists():
+            try:
+                with open(build_info_path, 'r') as f:
+                    build_info = json.load(f)
+                    commit = build_info.get('git_commit', 'unknown')
+                    branch = build_info.get('git_branch', 'unknown')
+                    
+                    # Create short hash from full commit
+                    short_hash = commit[:7] if len(commit) > 7 else commit
+                    
+                    return {
+                        'commit': commit,
+                        'short_hash': short_hash,
+                        'branch': branch,
+                        'dirty': False  # Docker build is always clean
+                    }
+            except (json.JSONDecodeError, FileNotFoundError, KeyError):
+                pass
+        
+        # Fallback to git commands (development environment)
         try:
             commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], stderr=subprocess.DEVNULL).decode().strip()
             short_hash = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], stderr=subprocess.DEVNULL).decode().strip()

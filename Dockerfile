@@ -2,6 +2,11 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Build arguments for git info
+ARG GIT_COMMIT=unknown
+ARG GIT_BRANCH=unknown
+ARG BUILD_DATE=unknown
+
 # Установка системных зависимостей
 RUN apt-get update && apt-get install -y \
     gcc \
@@ -13,6 +18,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Копирование приложения
 COPY . .
+
+# Create build info file with git information
+RUN echo "{ \
+    \"git_commit\": \"$GIT_COMMIT\", \
+    \"git_branch\": \"$GIT_BRANCH\", \
+    \"build_date\": \"$BUILD_DATE\" \
+}" > /app/build_info.json
 
 # Создание пользователя и настройка прав
 RUN useradd -m -u 1000 appuser && \
