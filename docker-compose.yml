@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  vesta:
+    build: .
+    container_name: vesta_app
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=sqlite:////app/instance/vesta.db
+    restart: unless-stopped

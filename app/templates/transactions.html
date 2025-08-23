@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Транзакции - FamilyBudget{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1><i class="bi bi-list-ul"></i> Все транзакции</h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('main.add_transaction') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Добавить транзакцию
+        </a>
+    </div>
+</div>
+
+<!-- Фильтры -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h6><i class="bi bi-funnel"></i> Фильтры</h6>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-2">
+                <label class="form-label">Тип</label>
+                <select name="type" class="form-select">
+                    <option value="">Все типы</option>
+                    <option value="income" {% if filters.type == 'income' %}selected{% endif %}>Доходы</option>
+                    <option value="expense" {% if filters.type == 'expense' %}selected{% endif %}>Расходы</option>
+                    <option value="transfer" {% if filters.type == 'transfer' %}selected{% endif %}>Переводы</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Пользователь</label>
+                <select name="user_id" class="form-select">
+                    <option value="">Все</option>
+                    {% for user in users %}
+                    <option value="{{ user.id }}" {% if filters.user_id == user.id %}selected{% endif %}>{{ user.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Категория</label>
+                <select name="category_id" class="form-select">
+                    <option value="">Все</option>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}" {% if filters.category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Дата с</label>
+                <input type="date" name="date_from" class="form-control" value="{{ filters.date_from or '' }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Дата по</label>
+                <input type="date" name="date_to" class="form-control" value="{{ filters.date_to or '' }}">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-search"></i> Фильтр
+                </button>
+                <a href="{{ url_for('main.transactions') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Таблица транзакций -->
+<div class="card">
+    <div class="card-body">
+        {% if transactions.items %}
+            <div class="table-responsive">
+                <table id="transactionsTable" class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Тип</th>
+                            <th>Счета</th>
+                            <th class="text-end">Сумма</th>
+                            <th>Категория</th>
+                            <th>Описание</th>
+                            <th width="50"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions.items %}
+                        <tr>
+                            <td>{{ transaction.date.strftime('%d.%m.%Y') }}</td>
+                            <td>
+                                <span class="badge transaction-type-{{ transaction.transaction_type }}">
+                                    {{ transaction.get_transaction_type_display() }}
+                                </span>
+                            </td>
+                            <td>{{ transaction.get_account_display() }}</td>
+                            <td class="text-end transaction-type-{{ transaction.transaction_type }}">
+                                <strong>{{ "{:,.2f}".format(transaction.amount).replace(',', ' ') }} ₽</strong>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">{{ transaction.category.name }}</span>
+                            </td>
+                            <td>{{ transaction.description or '-' }}</td>
+                            <td>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                        <i class="bi bi-three-dots"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="#"><i class="bi bi-pencil"></i> Редактировать</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item text-danger" href="#"><i class="bi bi-trash"></i> Удалить</a></li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Пагинация -->
+            {% if transactions.pages > 1 %}
+            <nav aria-label="Пагинация транзакций">
+                <ul class="pagination justify-content-center">
+                    {% if transactions.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('main.transactions', page=transactions.prev_num) }}">Предыдущая</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in transactions.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != transactions.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('main.transactions', page=page_num) }}">{{ page_num }}</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if transactions.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('main.transactions', page=transactions.next_num) }}">Следующая</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            <div class="row mt-3">
+                <div class="col-6">
+                    <small class="text-muted">
+                        Показано {{ transactions.items|length }} из {{ transactions.total }} транзакций
+                    </small>
+                </div>
+                <div class="col-6 text-end">
+                    <button class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-download"></i> Экспорт CSV
+                    </button>
+                </div>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox display-1 text-muted"></i>
+                <h4>Нет транзакций</h4>
+                <p class="text-muted">Транзакции по выбранным фильтрам не найдены</p>
+                <a href="{{ url_for('main.add_transaction') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Добавить транзакцию
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('#transactionsTable').DataTable({
+        "paging": false,
+        "info": false,
+        "searching": false,
+        "ordering": false,
+        "language": {
+            "emptyTable": "Нет данных для отображения",
+            "loadingRecords": "Загрузка...",
+            "processing": "Обработка..."
+        }
+    });
+});
+</script>
+{% endblock %}

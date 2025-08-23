@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Добавить транзакцию - FamilyBudget{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1><i class="bi bi-plus-circle"></i> Добавить транзакцию</h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('main.transactions') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> К списку транзакций
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" id="transactionForm">
+                    <div class="row g-3">
+                        <!-- Тип транзакции -->
+                        <div class="col-md-4">
+                            <label class="form-label">Тип транзакции *</label>
+                            <select name="transaction_type" id="transactionType" class="form-select" required>
+                                <option value="">Выберите тип</option>
+                                <option value="income" {% if request.args.get('type') == 'income' %}selected{% endif %}>Доход</option>
+                                <option value="expense" {% if request.args.get('type') == 'expense' %}selected{% endif %}>Расход</option>
+                                <option value="transfer" {% if request.args.get('type') == 'transfer' %}selected{% endif %}>Перевод</option>
+                            </select>
+                        </div>
+
+                        <!-- Сумма -->
+                        <div class="col-md-4">
+                            <label class="form-label">Сумма *</label>
+                            <div class="input-group">
+                                <input type="number" name="amount" class="form-control" step="0.01" min="0.01" required>
+                                <span class="input-group-text">₽</span>
+                            </div>
+                        </div>
+
+                        <!-- Дата -->
+                        <div class="col-md-4">
+                            <label class="form-label">Дата *</label>
+                            <input type="date" name="date" class="form-control" value="{{ today }}" required>
+                        </div>
+
+                        <!-- Категория -->
+                        <div class="col-md-6">
+                            <label class="form-label">Категория *</label>
+                            <select name="category_id" id="categorySelect" class="form-select" required>
+                                <option value="">Выберите категорию</option>
+                            </select>
+                        </div>
+
+                        <!-- Счет списания (для расходов и переводов) -->
+                        <div class="col-md-6" id="fromAccountGroup" style="display: none;">
+                            <label class="form-label">Счет списания *</label>
+                            <select name="from_account_id" id="fromAccountSelect" class="form-select">
+                                <option value="">Выберите счет</option>
+                            </select>
+                        </div>
+
+                        <!-- Счет зачисления (для доходов и переводов) -->
+                        <div class="col-md-6" id="toAccountGroup" style="display: none;">
+                            <label class="form-label">Счет зачисления *</label>
+                            <select name="to_account_id" id="toAccountSelect" class="form-select">
+                                <option value="">Выберите счет</option>
+                            </select>
+                        </div>
+
+                        <!-- Описание -->
+                        <div class="col-12">
+                            <label class="form-label">Описание</label>
+                            <textarea name="description" class="form-control" rows="3" placeholder="Необязательное описание транзакции"></textarea>
+                        </div>
+
+                        <!-- Кнопки -->
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Добавить транзакцию
+                            </button>
+                            <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+                                Отмена
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Боковая панель с подсказками -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="bi bi-info-circle"></i> Подсказки</h6>
+            </div>
+            <div class="card-body">
+                <div class="help-section">
+                    <h6 class="text-success"><i class="bi bi-arrow-up-circle"></i> Доходы</h6>
+                    <p><small>Зарплата, фриланс, подарки, инвестиции. Деньги поступают на выбранный счет.</small></p>
+                </div>
+                
+                <div class="help-section">
+                    <h6 class="text-danger"><i class="bi bi-arrow-down-circle"></i> Расходы</h6>
+                    <p><small>Покупки, счета, развлечения. Деньги списываются с выбранного счета.</small></p>
+                </div>
+                
+                <div class="help-section">
+                    <h6 class="text-primary"><i class="bi bi-arrow-left-right"></i> Переводы</h6>
+                    <p><small>Перемещение денег между своими счетами. Не влияет на общий баланс семьи.</small></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Быстрые суммы -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6><i class="bi bi-lightning"></i> Быстрые суммы</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm quick-amount" data-amount="500">500 ₽</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm quick-amount" data-amount="1000">1 000 ₽</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm quick-amount" data-amount="2000">2 000 ₽</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm quick-amount" data-amount="5000">5 000 ₽</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Загрузка счетов для всех пользователей
+    let allAccounts = [];
+    {% for user in users %}
+        {% for account in user.accounts %}
+        allAccounts.push({
+            id: {{ account.id }},
+            name: '{{ user.name }}: {{ account.name }}',
+            user_id: {{ user.id }},
+            balance: {{ account.balance }}
+        });
+        {% endfor %}
+    {% endfor %}
+
+    // Обновление формы при изменении типа транзакции
+    $('#transactionType').change(function() {
+        const type = $(this).val();
+        updateFormForTransactionType(type);
+        loadCategories(type);
+    });
+
+    function updateFormForTransactionType(type) {
+        const fromGroup = $('#fromAccountGroup');
+        const toGroup = $('#toAccountGroup');
+        const fromSelect = $('#fromAccountSelect');
+        const toSelect = $('#toAccountSelect');
+
+        // Очистка селектов счетов
+        fromSelect.html('<option value="">Выберите счет</option>');
+        toSelect.html('<option value="">Выберите счет</option>');
+
+        if (type === 'income') {
+            fromGroup.hide();
+            toGroup.show();
+            fromSelect.removeAttr('required');
+            toSelect.attr('required', true);
+            
+            // Загружаем все счета в toSelect
+            allAccounts.forEach(account => {
+                toSelect.append(`<option value="${account.id}">${account.name} (${account.balance.toFixed(2)} ₽)</option>`);
+            });
+            
+        } else if (type === 'expense') {
+            fromGroup.show();
+            toGroup.hide();
+            fromSelect.attr('required', true);
+            toSelect.removeAttr('required');
+            
+            // Загружаем все счета в fromSelect
+            allAccounts.forEach(account => {
+                fromSelect.append(`<option value="${account.id}">${account.name} (${account.balance.toFixed(2)} ₽)</option>`);
+            });
+            
+        } else if (type === 'transfer') {
+            fromGroup.show();
+            toGroup.show();
+            fromSelect.attr('required', true);
+            toSelect.attr('required', true);
+            
+            // Загружаем все счета в оба селекта
+            allAccounts.forEach(account => {
+                fromSelect.append(`<option value="${account.id}">${account.name} (${account.balance.toFixed(2)} ₽)</option>`);
+                toSelect.append(`<option value="${account.id}">${account.name} (${account.balance.toFixed(2)} ₽)</option>`);
+            });
+            
+        } else {
+            fromGroup.hide();
+            toGroup.hide();
+            fromSelect.removeAttr('required');
+            toSelect.removeAttr('required');
+        }
+    }
+
+    function loadCategories(type) {
+        const categorySelect = $('#categorySelect');
+        categorySelect.html('<option value="">Загрузка...</option>');
+        
+        if (!type) {
+            categorySelect.html('<option value="">Выберите тип транзакции</option>');
+            return;
+        }
+        
+        $.get(`/api/categories/${type}`, function(categories) {
+            categorySelect.html('<option value="">Выберите категорию</option>');
+            categories.forEach(category => {
+                categorySelect.append(`<option value="${category.id}">${category.name}</option>`);
+            });
+        });
+    }
+
+    // Быстрые суммы
+    $('.quick-amount').click(function() {
+        const amount = $(this).data('amount');
+        $('input[name="amount"]').val(amount);
+    });
+
+    // Проверка при отправке формы для переводов
+    $('#transactionForm').submit(function(e) {
+        const type = $('#transactionType').val();
+        if (type === 'transfer') {
+            const fromAccount = $('#fromAccountSelect').val();
+            const toAccount = $('#toAccountSelect').val();
+            
+            if (fromAccount === toAccount) {
+                e.preventDefault();
+                alert('Счет списания и зачисления не могут быть одинаковыми!');
+                return false;
+            }
+        }
+    });
+
+    // Инициализация формы при загрузке
+    const initialType = $('#transactionType').val();
+    if (initialType) {
+        updateFormForTransactionType(initialType);
+        loadCategories(initialType);
+    }
+});
+</script>
+{% endblock %}

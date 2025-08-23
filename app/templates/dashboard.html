@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Дашборд - FamilyBudget{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1><i class="bi bi-speedometer2"></i> Семейный бюджет</h1>
+        <p class="text-muted">Обзор финансов за {{ current_month }}/{{ current_year }}</p>
+    </div>
+</div>
+
+<!-- Общая статистика -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-success"><i class="bi bi-arrow-up-circle"></i> Доходы</h5>
+                <p class="card-text card-balance balance-positive">
+                    {{ "{:,.2f}".format(monthly_stats.total_income).replace(',', ' ') }} ₽
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-danger"><i class="bi bi-arrow-down-circle"></i> Расходы</h5>
+                <p class="card-text card-balance balance-negative">
+                    {{ "{:,.2f}".format(monthly_stats.total_expense).replace(',', ' ') }} ₽
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-primary"><i class="bi bi-arrow-left-right"></i> Переводы</h5>
+                <p class="card-text card-balance text-primary">
+                    {{ "{:,.2f}".format(monthly_stats.total_transfers).replace(',', ' ') }} ₽
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-wallet2"></i> Общий баланс</h5>
+                <p class="card-text card-balance {% if total_family_balance >= 0 %}balance-positive{% else %}balance-negative{% endif %}">
+                    {{ "{:,.2f}".format(total_family_balance).replace(',', ' ') }} ₽
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Счета по пользователям -->
+<div class="row mb-4">
+    {% for user in users %}
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-person-circle"></i> {{ user.name }}</h5>
+            </div>
+            <div class="card-body">
+                {% if user.accounts %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Счет</th>
+                                    <th>Тип</th>
+                                    <th class="text-end">Баланс</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for account in user.accounts %}
+                                <tr>
+                                    <td><strong>{{ account.name }}</strong></td>
+                                    <td><span class="badge bg-secondary">{{ account.get_account_type_display() }}</span></td>
+                                    <td class="text-end {% if account.balance >= 0 %}balance-positive{% else %}balance-negative{% endif %}">
+                                        <strong>{{ "{:,.2f}".format(account.balance).replace(',', ' ') }} ₽</strong>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="table-light">
+                                    <td colspan="2"><strong>Итого:</strong></td>
+                                    <td class="text-end {% if user.get_total_balance() >= 0 %}balance-positive{% else %}balance-negative{% endif %}">
+                                        <strong>{{ "{:,.2f}".format(user.get_total_balance()).replace(',', ' ') }} ₽</strong>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">Нет добавленных счетов</p>
+                    <a href="{{ url_for('main.accounts') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-plus-circle"></i> Добавить счет
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Последние транзакции -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="bi bi-clock-history"></i> Последние транзакции</h5>
+                <a href="{{ url_for('main.transactions') }}" class="btn btn-outline-primary btn-sm">
+                    Все транзакции <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                {% if recent_transactions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Тип</th>
+                                    <th>Счета</th>
+                                    <th>Сумма</th>
+                                    <th>Категория</th>
+                                    <th>Описание</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in recent_transactions %}
+                                <tr>
+                                    <td>{{ transaction.date.strftime('%d.%m.%Y') }}</td>
+                                    <td>
+                                        <span class="badge transaction-type-{{ transaction.transaction_type }}">
+                                            {{ transaction.get_transaction_type_display() }}
+                                        </span>
+                                    </td>
+                                    <td>{{ transaction.get_account_display() }}</td>
+                                    <td class="transaction-type-{{ transaction.transaction_type }}">
+                                        <strong>{{ "{:,.2f}".format(transaction.amount).replace(',', ' ') }} ₽</strong>
+                                    </td>
+                                    <td>{{ transaction.category.name }}</td>
+                                    <td>{{ transaction.description or '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-4">Нет транзакций</p>
+                    <div class="text-center">
+                        <a href="{{ url_for('main.add_transaction') }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Добавить первую транзакцию
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Быстрые действия -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="bi bi-lightning"></i> Быстрые действия</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-2">
+                        <a href="{{ url_for('main.add_transaction') }}?type=income" class="btn btn-success w-100">
+                            <i class="bi bi-plus-circle"></i> Добавить доход
+                        </a>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <a href="{{ url_for('main.add_transaction') }}?type=expense" class="btn btn-danger w-100">
+                            <i class="bi bi-dash-circle"></i> Добавить расход
+                        </a>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <a href="{{ url_for('main.add_transaction') }}?type=transfer" class="btn btn-primary w-100">
+                            <i class="bi bi-arrow-left-right"></i> Перевод между счетами
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

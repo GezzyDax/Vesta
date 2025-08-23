@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}Accounts - Vesta{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1><i class="bi bi-credit-card"></i> Account Management</h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAccountModal">
+            <i class="bi bi-plus-circle"></i> Add Account
+        </button>
+    </div>
+</div>
+
+<!-- Счета по пользователям -->
+<div class="row">
+    {% for user in users %}
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-person-circle"></i> {{ user.name }}</h5>
+            </div>
+            <div class="card-body">
+                {% if user.accounts %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Название</th>
+                                    <th>Тип</th>
+                                    <th class="text-end">Баланс</th>
+                                    <th width="80"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for account in user.accounts %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ account.name }}</strong>
+                                        {% if not account.is_active %}
+                                        <span class="badge bg-secondary ms-2">Неактивен</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge 
+                                        {%- if account.account_type == 'debit' %} bg-success
+                                        {%- elif account.account_type == 'credit' %} bg-warning
+                                        {%- elif account.account_type == 'cash' %} bg-secondary
+                                        {%- elif account.account_type == 'savings_goal' %} bg-primary
+                                        {%- else %} bg-info
+                                        {%- endif %}">
+                                            {{ account.get_account_type_display() }}
+                                            {% if account.account_type == 'savings_goal' and account.get_savings_progress() %}
+                                                ({{ "{:.0f}".format(account.get_savings_progress()) }}%)
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td class="text-end {% if account.balance >= 0 %}balance-positive{% else %}balance-negative{% endif %}">
+                                        <strong>{{ "{:,.2f}".format(account.balance).replace(',', ' ') }} ₽</strong>
+                                    </td>
+                                    <td>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                <i class="bi bi-three-dots"></i>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li>
+                                                    <a class="dropdown-item" href="#" 
+                                                       onclick="editAccount({{ account.id }}, '{{ account.name }}', '{{ account.account_type }}', {{ account.balance }})">
+                                                        <i class="bi bi-pencil"></i> Редактировать
+                                                    </a>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <form method="POST" action="{{ url_for('main.delete_account', account_id=account.id) }}" 
+                                                          style="display: inline;" onsubmit="return confirm('Вы уверены?')">
+                                                        <button type="submit" class="dropdown-item text-danger">
+                                                            <i class="bi bi-trash"></i> Удалить
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="table-light">
+                                    <td colspan="2"><strong>Итого:</strong></td>
+                                    <td class="text-end {% if user.get_total_balance() >= 0 %}balance-positive{% else %}balance-negative{% endif %}">
+                                        <strong>{{ "{:,.2f}".format(user.get_total_balance()).replace(',', ' ') }} ₽</strong>
+                                    </td>
+                                    <td></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-credit-card display-6 text-muted"></i>
+                        <p class="text-muted mt-2">У {{ user.name|lower }} нет добавленных счетов</p>
+                        <button type="button" class="btn btn-outline-primary btn-sm" 
+                                onclick="openAddAccountModal({{ user.id }}, '{{ user.name }}')">
+                            <i class="bi bi-plus-circle"></i> Add Account
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Общая статистика -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="bi bi-bar-chart"></i> Общая статистика</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <h5 class="text-success">
+                            {{ "{:,.2f}".format(stats.total_balance).replace(',', ' ') }} ₽
+                        </h5>
+                        <p class="text-muted mb-0">Общий баланс</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h5 class="text-primary">
+                            {{ stats.total_accounts }}
+                        </h5>
+                        <p class="text-muted mb-0">Всего счетов</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h5 class="text-info">
+                            {{ stats.debit_count }}
+                        </h5>
+                        <p class="text-muted mb-0">Дебетовых</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h5 class="text-warning">
+                            {{ stats.credit_count }}
+                        </h5>
+                        <p class="text-muted mb-0">Кредитных</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно добавления счета -->
+<div class="modal fade" id="addAccountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить новый счет</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('main.add_account') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Владелец *</label>
+                        <select name="user_id" class="form-select" required>
+                            <option value="">Выберите владельца</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Название счета *</label>
+                        <input type="text" name="name" class="form-control" placeholder="Например: Основная карта ВТБ" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Тип счета *</label>
+                        <select name="account_type" class="form-select" required>
+                            <option value="">Выберите тип</option>
+                            <option value="debit">Дебетовая карта</option>
+                            <option value="credit">Кредитная карта</option>
+                            <option value="savings">Сберегательный счет</option>
+                            <option value="cash">Наличные</option>
+                            <option value="savings_goal">Накопления</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Начальный баланс</label>
+                        <div class="input-group">
+                            <input type="number" name="balance" class="form-control" step="0.01" value="0.00">
+                            <span class="input-group-text">₽</span>
+                        </div>
+                        <div class="form-text">Текущий остаток на счете</div>
+                    </div>
+                    <div class="mb-3" id="goal-amount-section" style="display: none;">
+                        <label class="form-label">Цель накопления</label>
+                        <div class="input-group">
+                            <input type="number" name="goal_amount" class="form-control" step="0.01" placeholder="0.00">
+                            <span class="input-group-text">₽</span>
+                        </div>
+                        <div class="form-text">Сумма, которую планируете накопить</div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="include_in_balance" id="include_in_balance" checked>
+                            <label class="form-check-label" for="include_in_balance">
+                                Включать в общий баланс
+                            </label>
+                            <div class="form-text">Отключите для кредитных карт, чтобы исключить их из подсчета общего баланса</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить счет</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openAddAccountModal(userId, userName) {
+    const modal = new bootstrap.Modal(document.getElementById('addAccountModal'));
+    const userSelect = document.querySelector('#addAccountModal select[name="user_id"]');
+    userSelect.value = userId;
+    modal.show();
+}
+
+function editAccount(accountId, name, type, balance) {
+    // Здесь можно реализовать редактирование счета
+    alert('Функция редактирования будет добавлена в следующей версии');
+}
+
+// Показать/скрыть поле цели накопления
+document.addEventListener('DOMContentLoaded', function() {
+    const accountTypeSelect = document.querySelector('select[name="account_type"]');
+    const goalSection = document.getElementById('goal-amount-section');
+    const includeInBalanceCheckbox = document.querySelector('input[name="include_in_balance"]');
+    
+    accountTypeSelect.addEventListener('change', function() {
+        if (this.value === 'savings_goal') {
+            goalSection.style.display = 'block';
+        } else {
+            goalSection.style.display = 'none';
+        }
+        
+        // Для кредитных карт по умолчанию отключаем включение в баланс
+        if (this.value === 'credit') {
+            includeInBalanceCheckbox.checked = false;
+        } else {
+            includeInBalanceCheckbox.checked = true;
+        }
+    });
+});
+</script>
+{% endblock %}
