@@ -22,6 +22,8 @@ class Transaction:
     transaction_type: str  # 'income' or 'expense'
     category: str = "Other"
     reference: str = ""
+    subcategory: Optional[str] = None
+    contact_phone: Optional[str] = None
     
 
 class BankStatementParser:

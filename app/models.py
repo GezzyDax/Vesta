@@ -121,6 +121,7 @@ class Transaction(db.Model):
     from_account = db.relationship('Account', foreign_keys=[from_account_id], backref='outgoing_transactions')
     to_account = db.relationship('Account', foreign_keys=[to_account_id], backref='incoming_transactions')
     
+    
     def __repr__(self):
         return f'<Transaction {self.amount} {self.transaction_type} on {self.date}>'
     
