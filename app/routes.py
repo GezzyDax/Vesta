@@ -404,14 +404,51 @@ def import_preview(session_id):
     selected_transactions = preview.preview_transactions.filter_by(status='selected').all()
     excluded_transactions = preview.preview_transactions.filter_by(status='excluded').all()
     
+    # Basic counts
+    income_transactions = [t for t in selected_transactions if t.transaction_type == 'income']
+    expense_transactions = [t for t in selected_transactions if t.transaction_type == 'expense']
+    
+    # Identify transfers (SBP, Financial category operations)
+    transfers = [t for t in selected_transactions if 
+                 'financial' in t.category_name.lower() or 
+                 'сбп' in t.description.lower() or 
+                 'sbp' in t.description.lower() or
+                 'перевод' in t.description.lower()]
+    
+    # Identify salary/income (common salary keywords)
+    salary_keywords = ['зарплата', 'заработная плата', 'оклад', 'salary', 'зп', 'premium', 'премия']
+    salary_transactions = [t for t in income_transactions if 
+                          any(keyword in t.description.lower() for keyword in salary_keywords)]
+    
+    # Calculate category breakdown for expenses
+    expense_categories = {}
+    for t in expense_transactions:
+        category = t.category_name
+        if category not in expense_categories:
+            expense_categories[category] = {'count': 0, 'amount': 0}
+        expense_categories[category]['count'] += 1
+        expense_categories[category]['amount'] += float(t.amount)
+    
     summary = {
         'total': preview.total_transactions,
         'selected': len(selected_transactions),
         'excluded': len(excluded_transactions),
         'duplicates': preview.duplicates_found,
         'total_amount_selected': sum(float(t.amount) for t in selected_transactions),
-        'income_amount': sum(float(t.amount) for t in selected_transactions if t.transaction_type == 'income'),
-        'expense_amount': sum(float(t.amount) for t in selected_transactions if t.transaction_type == 'expense')
+        'income_amount': sum(float(t.amount) for t in income_transactions),
+        'expense_amount': sum(float(t.amount) for t in expense_transactions),
+        
+        # Detailed breakdowns
+        'income_count': len(income_transactions),
+        'expense_count': len(expense_transactions),
+        'transfers_count': len(transfers),
+        'transfers_amount': sum(float(t.amount) for t in transfers),
+        'salary_count': len(salary_transactions),
+        'salary_amount': sum(float(t.amount) for t in salary_transactions),
+        
+        # Category breakdown
+        'expense_categories': dict(sorted(expense_categories.items(), key=lambda x: x[1]['amount'], reverse=True)),
+        'top_categories': dict(list(sorted(expense_categories.items(), key=lambda x: x[1]['amount'], reverse=True))[:5])
     }
     
     return render_template('import_preview.html',

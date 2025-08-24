@@ -89,6 +89,101 @@
     </div>
 </div>
 
+<!-- Detailed Statistics -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Detailed Statistics</h5>
+            </div>
+            <div class="card-body">
+                <!-- Transaction Type Breakdown -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <div class="mb-2">
+                                <i class="bi bi-arrow-up-circle fs-2 text-success"></i>
+                            </div>
+                            <div class="fw-bold fs-4 text-success">{{ summary.income_count }}</div>
+                            <small class="text-muted">Income Transactions</small>
+                            <div class="fw-bold text-success">{{ "{:,.2f}".format(summary.income_amount) }} ₽</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <div class="mb-2">
+                                <i class="bi bi-arrow-down-circle fs-2 text-danger"></i>
+                            </div>
+                            <div class="fw-bold fs-4 text-danger">{{ summary.expense_count }}</div>
+                            <small class="text-muted">Expense Transactions</small>
+                            <div class="fw-bold text-danger">{{ "{:,.2f}".format(summary.expense_amount) }} ₽</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <div class="mb-2">
+                                <i class="bi bi-arrow-left-right fs-2 text-info"></i>
+                            </div>
+                            <div class="fw-bold fs-4 text-info">{{ summary.transfers_count }}</div>
+                            <small class="text-muted">Transfers & SBP</small>
+                            <div class="fw-bold text-info">{{ "{:,.2f}".format(summary.transfers_amount) }} ₽</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <div class="mb-2">
+                                <i class="bi bi-cash-coin fs-2 text-warning"></i>
+                            </div>
+                            <div class="fw-bold fs-4 text-warning">{{ summary.salary_count }}</div>
+                            <small class="text-muted">Salary & Premium</small>
+                            <div class="fw-bold text-warning">{{ "{:,.2f}".format(summary.salary_amount) }} ₽</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Expense Categories -->
+                {% if summary.top_categories %}
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="mb-3"><i class="bi bi-tags"></i> Top Expense Categories</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Category</th>
+                                        <th class="text-center">Count</th>
+                                        <th class="text-end">Amount</th>
+                                        <th class="text-center">Percentage</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for category, data in summary.top_categories.items() %}
+                                    <tr>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ category }}</span>
+                                        </td>
+                                        <td class="text-center">{{ data.count }}</td>
+                                        <td class="text-end fw-bold">{{ "{:,.2f}".format(data.amount) }} ₽</td>
+                                        <td class="text-center">
+                                            {% if summary.expense_amount > 0 %}
+                                                {{ "{:.1f}%".format((data.amount / summary.expense_amount) * 100) }}
+                                            {% else %}
+                                                0.0%
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Action Buttons -->
 <div class="row mb-4">
     <div class="col-12">
