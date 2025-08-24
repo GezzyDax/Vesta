@@ -82,6 +82,7 @@
                             <th class="text-end">Сумма</th>
                             <th>Категория</th>
                             <th>Описание</th>
+                            <th>Контакт</th>
                             <th width="50"></th>
                         </tr>
                     </thead>
@@ -100,8 +101,34 @@
                             </td>
                             <td>
                                 <span class="badge bg-light text-dark">{{ transaction.category.name }}</span>
+                                {% if transaction.subcategory %}
+                                    <br><small class="text-muted">{{ transaction.subcategory }}</small>
+                                {% endif %}
                             </td>
-                            <td>{{ transaction.description or '-' }}</td>
+                            <td>
+                                {{ transaction.description or '-' }}
+                                {% if transaction.contact_phone %}
+                                    <br><small class="text-primary">📞 {{ transaction.contact_phone }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set contact = transaction.get_contact() %}
+                                {% if contact %}
+                                    <span class="badge bg-info">
+                                        <i class="bi bi-person"></i> {{ contact.name }}
+                                    </span>
+                                    <br><small class="text-muted">{{ contact.phone }}</small>
+                                {% elif transaction.contact_phone %}
+                                    <small class="text-muted">
+                                        <i class="bi bi-phone"></i> {{ transaction.contact_phone }}
+                                        <br><a href="{{ url_for('main.add_contact') }}?phone={{ transaction.contact_phone }}" class="text-decoration-none">
+                                            <i class="bi bi-plus-circle"></i> Добавить контакт
+                                        </a>
+                                    </small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 <div class="dropdown">
                                     <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">

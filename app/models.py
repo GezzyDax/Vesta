@@ -1,6 +1,6 @@
 from datetime import datetime, date
 from app import db
-from sqlalchemy import func
+from sqlalchemy import func, desc
 
 class User(db.Model):
     """Модель пользователя (Муж/Жена)"""
@@ -105,7 +105,10 @@ class Transaction(db.Model):
     date = db.Column(db.Date, nullable=False, default=date.today)
     amount = db.Column(db.Numeric(15, 2), nullable=False)
     description = db.Column(db.Text)
+    subcategory = db.Column(db.String(100))  # Подкатегория (например, "Пятерочка", "Аптека 36.6")
     transaction_type = db.Column(db.String(20), nullable=False)  # income, expense, transfer
+    contact_phone = db.Column(db.String(20))  # Номер телефона для СБП переводов
+    reference = db.Column(db.String(100))  # Ссылка на банковскую операцию
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Связи
@@ -129,6 +132,12 @@ class Transaction(db.Model):
             'transfer': 'Перевод'
         }
         return types.get(self.transaction_type, self.transaction_type)
+    
+    def get_contact(self):
+        """Получить связанный контакт по номеру телефона"""
+        if self.contact_phone and self.transaction_type in ['transfer', 'income']:
+            return Contact.get_by_phone(self.contact_phone)
+        return None
     
     def get_account_display(self):
         """Отображение счетов для транзакции"""
@@ -171,6 +180,75 @@ class Transaction(db.Model):
                 stats['total_transfers'] += float(transaction.amount)
         
         return stats
+
+
+class Contact(db.Model):
+    """Модель контакта для телефонной книги"""
+    __tablename__ = 'contacts'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.String(20), nullable=False, unique=True)
+    description = db.Column(db.Text)  # Дополнительная информация
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<Contact {self.name} ({self.phone})>'
+    
+    @staticmethod
+    def get_by_phone(phone):
+        """Получить контакт по номеру телефона"""
+        # Normalize phone number (remove +7, 8, spaces, etc.)
+        normalized = Contact.normalize_phone(phone)
+        if normalized:
+            return Contact.query.filter(
+                db.or_(
+                    Contact.phone == phone,
+                    Contact.phone == normalized,
+                    Contact.phone == f"+7{normalized[-10:]}",
+                    Contact.phone == f"8{normalized[-10:]}"
+                )
+            ).first()
+        return None
+    
+    @staticmethod
+    def normalize_phone(phone):
+        """Нормализация номера телефона"""
+        if not phone:
+            return None
+        
+        # Remove all non-digits
+        digits = ''.join(filter(str.isdigit, phone))
+        
+        if len(digits) == 11 and digits.startswith('8'):
+            # 8XXXXXXXXXX -> 7XXXXXXXXXX
+            digits = '7' + digits[1:]
+        elif len(digits) == 10:
+            # XXXXXXXXXX -> 7XXXXXXXXXX
+            digits = '7' + digits
+        
+        return digits if len(digits) == 11 else None
+    
+    def get_related_transactions(self):
+        """Получить связанные СБП переводы"""
+        return Transaction.query.filter_by(contact_phone=self.phone).order_by(desc(Transaction.date)).all()
+
+
+class UserProfile(db.Model):
+    """Модель профиля пользователя"""
+    __tablename__ = 'user_profiles'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, default='User')
+    phone = db.Column(db.String(20))
+    email = db.Column(db.String(120))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<UserProfile {self.name}>'
+    
 
 
 class DataVersion(db.Model):
@@ -295,11 +373,70 @@ class ImportPreviewTransaction(db.Model):
     date = db.Column(db.Date, nullable=False)
     amount = db.Column(db.Numeric(15, 2), nullable=False)
     description = db.Column(db.Text)
+    subcategory = db.Column(db.String(100))  # Подкатегория
     transaction_type = db.Column(db.String(20), nullable=False)
     category_name = db.Column(db.String(100), nullable=False)
+    contact_phone = db.Column(db.String(20))  # Номер телефона для СБП
+    reference = db.Column(db.String(100))  # Ссылка на операцию
     is_duplicate = db.Column(db.Boolean, default=False)
     duplicate_reason = db.Column(db.String(200))  # Причина дубликата
     status = db.Column(db.String(20), default='pending')  # 'pending', 'selected', 'excluded'
     
     def __repr__(self):
         return f'<ImportPreviewTransaction {self.amount} {self.category_name}>'
+
+
+class MerchantRule(db.Model):
+    """Правила категоризации мерчантов"""
+    __tablename__ = 'merchant_rules'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    pattern = db.Column(db.String(200), nullable=False)  # Шаблон для поиска (например, "GORZDRAV_5620")
+    merchant_name = db.Column(db.String(200), nullable=False)  # Название мерчанта (например, "RU/Voronezh/GORZDRAV_5620")
+    category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
+    subcategory = db.Column(db.String(100))  # Подкатегория (например, "Горздрав")
+    priority = db.Column(db.Integer, default=1)  # Приоритет правила (1 = высший)
+    is_active = db.Column(db.Boolean, default=True)
+    rule_type = db.Column(db.String(20), default='contains')  # 'contains', 'starts_with', 'ends_with', 'regex'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Связи
+    category = db.relationship('Category', backref='merchant_rules')
+    
+    def __repr__(self):
+        return f'<MerchantRule {self.pattern} -> {self.category.name}>'
+    
+    def matches(self, description):
+        """Проверить, подходит ли описание под это правило"""
+        if not self.is_active:
+            return False
+            
+        description_lower = description.lower()
+        pattern_lower = self.pattern.lower()
+        
+        if self.rule_type == 'contains':
+            return pattern_lower in description_lower
+        elif self.rule_type == 'starts_with':
+            return description_lower.startswith(pattern_lower)
+        elif self.rule_type == 'ends_with':
+            return description_lower.endswith(pattern_lower)
+        elif self.rule_type == 'regex':
+            import re
+            try:
+                return bool(re.search(self.pattern, description, re.IGNORECASE))
+            except re.error:
+                return False
+        
+        return False
+    
+    @staticmethod
+    def find_matching_rule(description):
+        """Найти наиболее подходящее правило для описания"""
+        rules = MerchantRule.query.filter_by(is_active=True).order_by(MerchantRule.priority.desc()).all()
+        
+        for rule in rules:
+            if rule.matches(description):
+                return rule
+        
+        return None

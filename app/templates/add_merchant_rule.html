@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Добавить правило - Vesta{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1><i class="bi bi-plus-circle"></i> Добавить правило категоризации</h1>
+        <p class="text-muted">Создание нового правила для автоматической категоризации мерчантов</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('main.merchant_rules') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> К списку правил
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-pencil-square"></i> Информация о правиле</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="merchant_name" class="form-label">Название мерчанта <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="merchant_name" name="merchant_name" 
+                               placeholder="RU/Kamenka/KUDYKINA GORA." required>
+                        <div class="form-text">
+                            Полное название мерчанта как оно появляется в банковской выписке
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="pattern" class="form-label">Шаблон для поиска <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="pattern" name="pattern" 
+                               placeholder="KUDYKINA GORA" required>
+                        <div class="form-text">
+                            Часть названия, по которой будет происходить поиск (без учета регистра)
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="category_id" class="form-label">Категория <span class="text-danger">*</span></label>
+                                <select class="form-select" id="category_id" name="category_id" required>
+                                    <option value="">Выберите категорию</option>
+                                    {% for category in categories %}
+                                    <option value="{{ category.id }}">{{ category.name }} ({{ category.get_category_type_display() }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="subcategory" class="form-label">Подкатегория</label>
+                                <input type="text" class="form-control" id="subcategory" name="subcategory" 
+                                       placeholder="Кудыкина Гора">
+                                <div class="form-text">
+                                    Необязательная подкатегория для более детальной классификации
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="rule_type" class="form-label">Тип правила</label>
+                                <select class="form-select" id="rule_type" name="rule_type">
+                                    <option value="contains">Содержит</option>
+                                    <option value="starts_with">Начинается с</option>
+                                    <option value="ends_with">Заканчивается на</option>
+                                    <option value="regex">Регулярное выражение</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="priority" class="form-label">Приоритет</label>
+                                <input type="number" class="form-control" id="priority" name="priority" 
+                                       value="1" min="1" max="100">
+                                <div class="form-text">
+                                    1 = высший приоритет, 100 = низший
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> Создать правило
+                        </button>
+                        <a href="{{ url_for('main.merchant_rules') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Отмена
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card bg-light">
+            <div class="card-header">
+                <h6><i class="bi bi-lightbulb"></i> Подсказки</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="bi bi-check text-success"></i>
+                        Используйте простые шаблоны для поиска
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check text-success"></i>
+                        Более высокий приоритет = раньше проверяется
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check text-success"></i>
+                        Поиск происходит без учета регистра
+                    </li>
+                    <li>
+                        <i class="bi bi-check text-success"></i>
+                        Подкатегория помогает детализировать расходы
+                    </li>
+                </ul>
+                
+                <hr>
+                
+                <h6>Примеры шаблонов:</h6>
+                <div class="font-monospace small">
+                    <div><strong>Содержит:</strong> GORZDRAV</div>
+                    <div><strong>Начинается:</strong> RU/Moscow/</div>
+                    <div><strong>Регекс:</strong> PYATEROCHKA.*\d+</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Автофокус на поле названия мерчанта
+document.getElementById('merchant_name').focus();
+
+// Автоматическое заполнение шаблона на основе названия мерчанта
+document.getElementById('merchant_name').addEventListener('input', function(e) {
+    const merchantName = e.target.value;
+    const patternField = document.getElementById('pattern');
+    
+    // Если шаблон пустой, попробуем извлечь ключевое слово
+    if (!patternField.value && merchantName) {
+        // Ищем последнюю часть после слеша
+        const parts = merchantName.split('/');
+        if (parts.length > 1) {
+            const lastPart = parts[parts.length - 1];
+            // Убираем цифры и специальные символы
+            const cleaned = lastPart.replace(/[_\d\.\s]+/g, ' ').trim();
+            if (cleaned) {
+                patternField.value = cleaned;
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

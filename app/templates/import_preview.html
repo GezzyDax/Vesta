@@ -223,7 +223,8 @@
                         <th width="100">Date</th>
                         <th width="150">Amount</th>
                         <th width="100">Type</th>
-                        <th width="150">Category</th>
+                        <th width="120">Category</th>
+                        <th width="120">Subcategory</th>
                         <th>Description</th>
                         <th width="100">Status</th>
                     </tr>
@@ -252,10 +253,22 @@
                                 {% if transaction.transaction_type == 'income' %}Income{% else %}Expense{% endif %}
                             </span>
                         </td>
-                        <td>{{ transaction.category_name }}</td>
                         <td>
-                            <div class="text-truncate" style="max-width: 300px;" title="{{ transaction.description }}">
+                            <span class="badge bg-secondary">{{ transaction.category_name }}</span>
+                        </td>
+                        <td>
+                            {% if transaction.subcategory %}
+                                <span class="badge bg-info">{{ transaction.subcategory }}</span>
+                            {% else %}
+                                <small class="text-muted">-</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="text-truncate" style="max-width: 250px;" title="{{ transaction.description }}">
                                 {{ transaction.description }}
+                                {% if transaction.contact_phone %}
+                                    <br><small class="text-primary">📞 {{ transaction.contact_phone }}</small>
+                                {% endif %}
                             </div>
                         </td>
                         <td>

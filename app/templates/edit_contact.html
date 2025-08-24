@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Редактировать контакт - Vesta{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1><i class="bi bi-pencil-square"></i> Редактировать контакт</h1>
+        <p class="text-muted">Изменение информации о контакте "{{ contact.name }}"</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('main.contacts') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> К списку контактов
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-pencil-square"></i> Информация о контакте</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Имя <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="name" name="name" 
+                               value="{{ contact.name }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Номер телефона <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" id="phone" name="phone" 
+                               value="{{ contact.phone }}"
+                               pattern="[\+]?[0-9\s\-\(\)]+"
+                               title="Введите номер телефона в формате +7XXXXXXXXXX"
+                               required>
+                        <div class="form-text">
+                            Номер будет использован для автоматического распознавания СБП переводов.
+                            Формат: +7XXXXXXXXXX, 8XXXXXXXXXX или XXXXXXXXXX
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Описание</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" 
+                                  placeholder="Дополнительная информация о контакте (необязательно)">{{ contact.description or '' }}</textarea>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Сохранить изменения
+                        </button>
+                        <a href="{{ url_for('main.contacts') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Отмена
+                        </a>
+                        <button type="button" class="btn btn-danger" 
+                                onclick="confirmDelete({{ contact.id }}, '{{ contact.name }}')">
+                            <i class="bi bi-trash"></i> Удалить контакт
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card bg-light">
+            <div class="card-header">
+                <h6><i class="bi bi-info-circle"></i> Информация</h6>
+            </div>
+            <div class="card-body">
+                <p class="card-text">
+                    <strong>Создан:</strong><br>
+                    {{ contact.created_at.strftime('%d.%m.%Y %H:%M') }}
+                </p>
+                <p class="card-text">
+                    <strong>Обновлён:</strong><br>
+                    {{ contact.updated_at.strftime('%d.%m.%Y %H:%M') }}
+                </p>
+                
+                <hr>
+                
+                <h6>Форматы номеров:</h6>
+                <div class="font-monospace small">
+                    <div>+7 900 123 45 67</div>
+                    <div>8 900 123 45 67</div>
+                    <div>9001234567</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Связанные СБП переводы -->
+        {% set related_transactions = contact.get_related_transactions() %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6><i class="bi bi-arrow-left-right"></i> СБП переводы ({{ related_transactions|length }})</h6>
+            </div>
+            <div class="card-body">
+                {% if related_transactions %}
+                    <div class="list-group list-group-flush">
+                        {% for transaction in related_transactions[:5] %}
+                        <div class="list-group-item px-0">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <small class="text-muted">{{ transaction.date.strftime('%d.%m.%Y') }}</small>
+                                    <div class="fw-bold text-{% if transaction.transaction_type == 'income' %}success{% else %}primary{% endif %}">
+                                        {% if transaction.transaction_type == 'income' %}+{% endif %}{{ "{:,.0f}".format(transaction.amount) }} ₽
+                                    </div>
+                                    <small class="text-muted">{{ transaction.description[:50] }}{% if transaction.description|length > 50 %}...{% endif %}</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-{% if transaction.transaction_type == 'income' %}success{% else %}primary{% endif %}">
+                                        {{ transaction.get_transaction_type_display() }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% if related_transactions|length > 5 %}
+                        <div class="list-group-item px-0 text-center">
+                            <a href="{{ url_for('main.transactions') }}?phone={{ contact.phone }}" class="text-decoration-none">
+                                <i class="bi bi-three-dots"></i> Показать все ({{ related_transactions|length }})
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <p class="text-muted small mb-0">
+                        Переводов с этим номером пока нет
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal для подтверждения удаления -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подтверждение удаления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите удалить контакт <strong id="contactName"></strong>?</p>
+                <p class="text-muted">Это действие нельзя отменить.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <form id="deleteForm" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-danger">Удалить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Форматирование номера телефона при вводе
+document.getElementById('phone').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    
+    if (value.startsWith('8') && value.length === 11) {
+        value = '7' + value.substring(1);
+    }
+    
+    if (value.startsWith('7') && value.length === 11) {
+        const formatted = `+7 (${value.substring(1, 4)}) ${value.substring(4, 7)}-${value.substring(7, 9)}-${value.substring(9, 11)}`;
+        e.target.value = formatted;
+    } else if (value.length === 10) {
+        const formatted = `+7 (${value.substring(0, 3)}) ${value.substring(3, 6)}-${value.substring(6, 8)}-${value.substring(8, 10)}`;
+        e.target.value = formatted;
+    }
+});
+
+function confirmDelete(contactId, contactName) {
+    document.getElementById('contactName').textContent = contactName;
+    document.getElementById('deleteForm').action = `/contacts/${contactId}/delete`;
+    
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+
+// Автофокус на поле имени
+document.getElementById('name').focus();
+</script>
+{% endblock %}

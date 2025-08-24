@@ -5,7 +5,8 @@ import uuid
 from werkzeug.utils import secure_filename
 from app import db
 from app.models import (User, Account, Transaction, Category, DataVersion, 
-                       TransactionSnapshot, AccountSnapshot, ImportPreview, ImportPreviewTransaction)
+                       TransactionSnapshot, AccountSnapshot, ImportPreview, ImportPreviewTransaction,
+                       Contact, UserProfile, MerchantRule)
 from app.bank_import import BankImportService
 from app.version import get_app_version, get_version_info
 from sqlalchemy import func, desc
@@ -49,6 +50,7 @@ def transactions():
     category_id = request.args.get('category_id', type=int)
     date_from = request.args.get('date_from')
     date_to = request.args.get('date_to')
+    phone_filter = request.args.get('phone')
     
     # Базовый запрос
     query = Transaction.query
@@ -74,6 +76,9 @@ def transactions():
     
     if date_to:
         query = query.filter(Transaction.date <= datetime.strptime(date_to, '%Y-%m-%d').date())
+    
+    if phone_filter:
+        query = query.filter(Transaction.contact_phone == phone_filter)
     
     # Сортировка и пагинация
     transactions = query.order_by(desc(Transaction.date), desc(Transaction.created_at)).paginate(
@@ -356,8 +361,11 @@ def import_bank_statement():
                     date=trans_data.date,
                     amount=trans_data.amount,
                     description=trans_data.description,
+                    subcategory=trans_data.subcategory,
                     transaction_type=trans_data.transaction_type,
                     category_name=trans_data.category,
+                    contact_phone=trans_data.contact_phone,
+                    reference=trans_data.reference,
                     is_duplicate=is_duplicate,
                     duplicate_reason='Identical transaction found' if is_duplicate else None,
                     status='excluded' if is_duplicate else 'selected'
@@ -508,7 +516,10 @@ def import_confirm():
                     date=preview_trans.date,
                     amount=preview_trans.amount,
                     description=preview_trans.description,
+                    subcategory=preview_trans.subcategory,
                     transaction_type=preview_trans.transaction_type,
+                    contact_phone=preview_trans.contact_phone,
+                    reference=preview_trans.reference,
                     category_id=category.id,
                     from_account_id=default_account.id if preview_trans.transaction_type == 'expense' else None,
                     to_account_id=default_account.id if preview_trans.transaction_type == 'income' else None
@@ -643,6 +654,327 @@ def about():
     """Show application version and info"""
     version_info = get_version_info()
     return render_template('about.html', version_info=version_info)
+
+
+@bp.route('/profile')
+def profile():
+    """Управление профилем пользователя"""
+    # Получаем всех пользователей системы (Муж/Жена)
+    users = User.query.filter_by(is_active=True).all()
+    
+    # Получаем общие настройки
+    user_profile = UserProfile.query.first()
+    if not user_profile:
+        # Создаём профиль по умолчанию
+        user_profile = UserProfile(name='Family')
+        db.session.add(user_profile)
+        db.session.commit()
+    
+    return render_template('profile.html', profile=user_profile, users=users)
+
+
+@bp.route('/profile', methods=['POST'])
+def update_profile():
+    """Обновление профиля пользователя"""
+    user_profile = UserProfile.query.first()
+    if not user_profile:
+        user_profile = UserProfile()
+        db.session.add(user_profile)
+    
+    user_profile.name = request.form.get('name', 'User')
+    user_profile.phone = request.form.get('phone', '').strip() or None
+    user_profile.email = request.form.get('email', '').strip() or None
+    user_profile.updated_at = datetime.utcnow()
+    
+    try:
+        db.session.commit()
+        flash('Профиль обновлён успешно!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка при обновлении профиля: {str(e)}', 'danger')
+    
+    return redirect(url_for('main.profile'))
+
+
+@bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
+def edit_user(user_id):
+    """Редактировать пользователя"""
+    user = User.query.get_or_404(user_id)
+    
+    if request.method == 'POST':
+        user.name = request.form.get('name', user.name).strip()
+        
+        try:
+            db.session.commit()
+            flash(f'Пользователь {user.name} обновлён успешно!', 'success')
+            return redirect(url_for('main.profile'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ошибка при обновлении пользователя: {str(e)}', 'danger')
+    
+    return render_template('edit_user.html', user=user)
+
+
+@bp.route('/contacts')
+def contacts():
+    """Телефонная книга для СБП"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 25
+    
+    contacts_query = Contact.query.order_by(Contact.name)
+    contacts_paginated = contacts_query.paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('contacts.html', contacts=contacts_paginated)
+
+
+@bp.route('/contacts/add', methods=['GET', 'POST'])
+def add_contact():
+    """Добавить контакт"""
+    # Получаем номер телефона из URL параметра
+    prefill_phone = request.args.get('phone', '').strip()
+    
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        phone = request.form.get('phone', '').strip()
+        description = request.form.get('description', '').strip()
+        
+        if not name or not phone:
+            flash('Имя и телефон обязательны для заполнения', 'danger')
+            return render_template('add_contact.html')
+        
+        # Нормализуем номер
+        normalized_phone = Contact.normalize_phone(phone)
+        if not normalized_phone:
+            flash('Некорректный формат номера телефона', 'danger')
+            return render_template('add_contact.html')
+        
+        # Проверяем уникальность
+        existing = Contact.query.filter_by(phone=f"+7{normalized_phone[-10:]}").first()
+        if existing:
+            flash(f'Контакт с номером {phone} уже существует', 'warning')
+            return redirect(url_for('main.contacts'))
+        
+        contact = Contact(
+            name=name,
+            phone=f"+7{normalized_phone[-10:]}",
+            description=description or None
+        )
+        
+        try:
+            db.session.add(contact)
+            db.session.commit()
+            flash(f'Контакт {name} добавлен успешно!', 'success')
+            return redirect(url_for('main.contacts'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ошибка при добавлении контакта: {str(e)}', 'danger')
+    
+    return render_template('add_contact.html', prefill_phone=prefill_phone)
+
+
+@bp.route('/contacts/<int:contact_id>/edit', methods=['GET', 'POST'])
+def edit_contact(contact_id):
+    """Редактировать контакт"""
+    contact = Contact.query.get_or_404(contact_id)
+    
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        phone = request.form.get('phone', '').strip()
+        description = request.form.get('description', '').strip()
+        
+        if not name or not phone:
+            flash('Имя и телефон обязательны для заполнения', 'danger')
+            return render_template('edit_contact.html', contact=contact)
+        
+        # Нормализуем номер
+        normalized_phone = Contact.normalize_phone(phone)
+        if not normalized_phone:
+            flash('Некорректный формат номера телефона', 'danger')
+            return render_template('edit_contact.html', contact=contact)
+        
+        new_phone = f"+7{normalized_phone[-10:]}"
+        
+        # Проверяем уникальность, если номер изменился
+        if new_phone != contact.phone:
+            existing = Contact.query.filter_by(phone=new_phone).first()
+            if existing:
+                flash(f'Контакт с номером {phone} уже существует', 'warning')
+                return render_template('edit_contact.html', contact=contact)
+        
+        contact.name = name
+        contact.phone = new_phone
+        contact.description = description or None
+        contact.updated_at = datetime.utcnow()
+        
+        try:
+            db.session.commit()
+            flash(f'Контакт {name} обновлён успешно!', 'success')
+            return redirect(url_for('main.contacts'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ошибка при обновлении контакта: {str(e)}', 'danger')
+    
+    return render_template('edit_contact.html', contact=contact)
+
+
+@bp.route('/contacts/<int:contact_id>/delete', methods=['POST'])
+def delete_contact(contact_id):
+    """Удалить контакт"""
+    contact = Contact.query.get_or_404(contact_id)
+    
+    try:
+        db.session.delete(contact)
+        db.session.commit()
+        flash(f'Контакт {contact.name} удалён', 'info')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка при удалении контакта: {str(e)}', 'danger')
+    
+    return redirect(url_for('main.contacts'))
+
+
+@bp.route('/merchant-rules')
+def merchant_rules():
+    """Справочник правил категоризации мерчантов"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 25
+    
+    rules_query = MerchantRule.query.order_by(MerchantRule.priority.desc(), MerchantRule.created_at.desc())
+    rules_paginated = rules_query.paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('merchant_rules.html', rules=rules_paginated)
+
+
+@bp.route('/merchant-rules/add', methods=['GET', 'POST'])
+def add_merchant_rule():
+    """Добавить правило категоризации"""
+    if request.method == 'POST':
+        pattern = request.form.get('pattern', '').strip()
+        merchant_name = request.form.get('merchant_name', '').strip()
+        category_id = request.form.get('category_id', type=int)
+        subcategory = request.form.get('subcategory', '').strip()
+        priority = request.form.get('priority', 1, type=int)
+        rule_type = request.form.get('rule_type', 'contains')
+        
+        if not pattern or not merchant_name or not category_id:
+            flash('Шаблон, название мерчанта и категория обязательны для заполнения', 'danger')
+            return render_template('add_merchant_rule.html', categories=Category.query.filter_by(is_active=True).all())
+        
+        # Проверяем, что категория существует
+        category = Category.query.get(category_id)
+        if not category:
+            flash('Выбранная категория не найдена', 'danger')
+            return render_template('add_merchant_rule.html', categories=Category.query.filter_by(is_active=True).all())
+        
+        rule = MerchantRule(
+            pattern=pattern,
+            merchant_name=merchant_name,
+            category_id=category_id,
+            subcategory=subcategory or None,
+            priority=priority,
+            rule_type=rule_type
+        )
+        
+        try:
+            db.session.add(rule)
+            db.session.commit()
+            flash(f'Правило для "{merchant_name}" добавлено успешно!', 'success')
+            return redirect(url_for('main.merchant_rules'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ошибка при добавлении правила: {str(e)}', 'danger')
+    
+    categories = Category.query.filter_by(is_active=True).all()
+    return render_template('add_merchant_rule.html', categories=categories)
+
+
+@bp.route('/merchant-rules/<int:rule_id>/edit', methods=['GET', 'POST'])
+def edit_merchant_rule(rule_id):
+    """Редактировать правило категоризации"""
+    rule = MerchantRule.query.get_or_404(rule_id)
+    
+    if request.method == 'POST':
+        pattern = request.form.get('pattern', '').strip()
+        merchant_name = request.form.get('merchant_name', '').strip()
+        category_id = request.form.get('category_id', type=int)
+        subcategory = request.form.get('subcategory', '').strip()
+        priority = request.form.get('priority', 1, type=int)
+        rule_type = request.form.get('rule_type', 'contains')
+        is_active = 'is_active' in request.form
+        
+        if not pattern or not merchant_name or not category_id:
+            flash('Шаблон, название мерчанта и категория обязательны для заполнения', 'danger')
+            return render_template('edit_merchant_rule.html', rule=rule, categories=Category.query.filter_by(is_active=True).all())
+        
+        # Проверяем, что категория существует
+        category = Category.query.get(category_id)
+        if not category:
+            flash('Выбранная категория не найдена', 'danger')
+            return render_template('edit_merchant_rule.html', rule=rule, categories=Category.query.filter_by(is_active=True).all())
+        
+        rule.pattern = pattern
+        rule.merchant_name = merchant_name
+        rule.category_id = category_id
+        rule.subcategory = subcategory or None
+        rule.priority = priority
+        rule.rule_type = rule_type
+        rule.is_active = is_active
+        rule.updated_at = datetime.utcnow()
+        
+        try:
+            db.session.commit()
+            flash(f'Правило "{merchant_name}" обновлено успешно!', 'success')
+            return redirect(url_for('main.merchant_rules'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ошибка при обновлении правила: {str(e)}', 'danger')
+    
+    categories = Category.query.filter_by(is_active=True).all()
+    return render_template('edit_merchant_rule.html', rule=rule, categories=categories)
+
+
+@bp.route('/merchant-rules/<int:rule_id>/delete', methods=['POST'])
+def delete_merchant_rule(rule_id):
+    """Удалить правило категоризации"""
+    rule = MerchantRule.query.get_or_404(rule_id)
+    
+    try:
+        db.session.delete(rule)
+        db.session.commit()
+        flash(f'Правило "{rule.merchant_name}" удалено', 'info')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка при удалении правила: {str(e)}', 'danger')
+    
+    return redirect(url_for('main.merchant_rules'))
+
+
+@bp.route('/merchant-rules/test', methods=['POST'])
+def test_merchant_rule():
+    """Тестировать правило на описании"""
+    description = request.form.get('description', '').strip()
+    
+    if not description:
+        return jsonify({'error': 'Описание не указано'}), 400
+    
+    matching_rule = MerchantRule.find_matching_rule(description)
+    
+    if matching_rule:
+        return jsonify({
+            'matched': True,
+            'rule_id': matching_rule.id,
+            'pattern': matching_rule.pattern,
+            'merchant_name': matching_rule.merchant_name,
+            'category': matching_rule.category.name,
+            'subcategory': matching_rule.subcategory,
+            'priority': matching_rule.priority
+        })
+    else:
+        return jsonify({'matched': False})
 
 
 # Context processor to make version available in all templates

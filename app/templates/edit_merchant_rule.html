@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Редактировать правило - Vesta{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1><i class="bi bi-pencil-square"></i> Редактировать правило</h1>
+        <p class="text-muted">Изменение правила для "{{ rule.merchant_name }}"</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('main.merchant_rules') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> К списку правил
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-pencil-square"></i> Информация о правиле</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="merchant_name" class="form-label">Название мерчанта <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="merchant_name" name="merchant_name" 
+                               value="{{ rule.merchant_name }}" required>
+                        <div class="form-text">
+                            Полное название мерчанта как оно появляется в банковской выписке
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="pattern" class="form-label">Шаблон для поиска <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="pattern" name="pattern" 
+                               value="{{ rule.pattern }}" required>
+                        <div class="form-text">
+                            Часть названия, по которой будет происходить поиск (без учета регистра)
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="category_id" class="form-label">Категория <span class="text-danger">*</span></label>
+                                <select class="form-select" id="category_id" name="category_id" required>
+                                    <option value="">Выберите категорию</option>
+                                    {% for category in categories %}
+                                    <option value="{{ category.id }}" {% if category.id == rule.category_id %}selected{% endif %}>
+                                        {{ category.name }} ({{ category.get_category_type_display() }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="subcategory" class="form-label">Подкатегория</label>
+                                <input type="text" class="form-control" id="subcategory" name="subcategory" 
+                                       value="{{ rule.subcategory or '' }}">
+                                <div class="form-text">
+                                    Необязательная подкатегория для более детальной классификации
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="rule_type" class="form-label">Тип правила</label>
+                                <select class="form-select" id="rule_type" name="rule_type">
+                                    <option value="contains" {% if rule.rule_type == 'contains' %}selected{% endif %}>Содержит</option>
+                                    <option value="starts_with" {% if rule.rule_type == 'starts_with' %}selected{% endif %}>Начинается с</option>
+                                    <option value="ends_with" {% if rule.rule_type == 'ends_with' %}selected{% endif %}>Заканчивается на</option>
+                                    <option value="regex" {% if rule.rule_type == 'regex' %}selected{% endif %}>Регулярное выражение</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="priority" class="form-label">Приоритет</label>
+                                <input type="number" class="form-control" id="priority" name="priority" 
+                                       value="{{ rule.priority }}" min="1" max="100">
+                                <div class="form-text">
+                                    1 = высший приоритет, 100 = низший
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
+                                   {% if rule.is_active %}checked{% endif %}>
+                            <label class="form-check-label" for="is_active">
+                                Правило активно
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Сохранить изменения
+                        </button>
+                        <a href="{{ url_for('main.merchant_rules') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Отмена
+                        </a>
+                        <button type="button" class="btn btn-danger" 
+                                onclick="confirmDelete({{ rule.id }}, '{{ rule.merchant_name }}')">
+                            <i class="bi bi-trash"></i> Удалить правило
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card bg-light">
+            <div class="card-header">
+                <h6><i class="bi bi-info-circle"></i> Информация</h6>
+            </div>
+            <div class="card-body">
+                <p class="card-text">
+                    <strong>Создано:</strong><br>
+                    {{ rule.created_at.strftime('%d.%m.%Y %H:%M') }}
+                </p>
+                <p class="card-text">
+                    <strong>Обновлено:</strong><br>
+                    {{ rule.updated_at.strftime('%d.%m.%Y %H:%M') }}
+                </p>
+                <p class="card-text">
+                    <strong>Статус:</strong><br>
+                    <span class="badge bg-{% if rule.is_active %}success{% else %}secondary{% endif %}">
+                        {% if rule.is_active %}Активно{% else %}Неактивно{% endif %}
+                    </span>
+                </p>
+                
+                <hr>
+                
+                <h6>Тест правила:</h6>
+                <div class="mb-2">
+                    <input type="text" class="form-control form-control-sm" id="testInput" 
+                           placeholder="Введите описание для теста">
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="testRule()">
+                    <i class="bi bi-play-circle"></i> Тестировать
+                </button>
+                <div id="testResult" class="mt-2" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal для подтверждения удаления -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подтверждение удаления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите удалить правило для мерчанта <strong id="ruleName"></strong>?</p>
+                <p class="text-muted">Это действие нельзя отменить.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <form id="deleteForm" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-danger">Удалить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete(ruleId, ruleName) {
+    document.getElementById('ruleName').textContent = ruleName;
+    document.getElementById('deleteForm').action = `/merchant-rules/${ruleId}/delete`;
+    
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+
+function testRule() {
+    const description = document.getElementById('testInput').value.trim();
+    const pattern = document.getElementById('pattern').value.trim();
+    const ruleType = document.getElementById('rule_type').value;
+    
+    if (!description || !pattern) {
+        document.getElementById('testResult').innerHTML = 
+            '<div class="alert alert-warning alert-sm">Введите описание и шаблон</div>';
+        document.getElementById('testResult').style.display = 'block';
+        return;
+    }
+    
+    // Простой тест на клиентской стороне
+    let matches = false;
+    const descLower = description.toLowerCase();
+    const patternLower = pattern.toLowerCase();
+    
+    switch(ruleType) {
+        case 'contains':
+            matches = descLower.includes(patternLower);
+            break;
+        case 'starts_with':
+            matches = descLower.startsWith(patternLower);
+            break;
+        case 'ends_with':
+            matches = descLower.endsWith(patternLower);
+            break;
+        case 'regex':
+            try {
+                matches = new RegExp(pattern, 'i').test(description);
+            } catch(e) {
+                matches = false;
+            }
+            break;
+    }
+    
+    const resultDiv = document.getElementById('testResult');
+    if (matches) {
+        resultDiv.innerHTML = '<div class="alert alert-success alert-sm"><i class="bi bi-check-circle"></i> Совпадение найдено!</div>';
+    } else {
+        resultDiv.innerHTML = '<div class="alert alert-danger alert-sm"><i class="bi bi-x-circle"></i> Совпадений нет</div>';
+    }
+    resultDiv.style.display = 'block';
+}
+
+// Автофокус на поле названия мерчанта
+document.getElementById('merchant_name').focus();
+</script>
+{% endblock %}

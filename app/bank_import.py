@@ -57,8 +57,12 @@ class AlphaBankParser(BankStatementParser):
             for i in range(19, len(df)):
                 row = df.iloc[i]
                 
+                # Debug: print entire row data for troubleshooting
+                print(f"Row {i}: {[str(row[j]) if j < len(row) and pd.notna(row[j]) else 'N/A' for j in range(min(len(row), 15))]}")
+                
                 # Check if this is a valid transaction row (has date in Col0)
                 if pd.isna(row[0]):
+                    print(f"Row {i}: Skipped - no date in Col0")
                     continue
                 
                 try:
@@ -78,22 +82,41 @@ class AlphaBankParser(BankStatementParser):
                     # Get description from Col11 (contains MCC, merchant info)
                     description = str(row[11]) if pd.notna(row[11]) else ""
                     
-                    # Get amount from Col12
+                    # Get amount from various possible columns (Col5, Col12, Col13, etc)
                     amount = 0.0
-                    if pd.notna(row[12]):
-                        amount_str = str(row[12])
-                        # Handle amount formatting (may have spaces, commas)
-                        amount_match = re.search(r'([+-]?)([\d\s,]+\.?\d*)', amount_str.replace(',', '.'))
-                        if amount_match:
-                            sign = -1 if amount_match.group(1) == '-' else 1
-                            clean_amount = amount_match.group(2).replace(' ', '')
-                            try:
-                                amount = float(clean_amount) * sign
-                            except:
-                                continue
+                    amount_col = None
+                    
+                    # Try different columns for amount
+                    for col_idx in [5, 12, 13, 14]:
+                        if col_idx < len(row) and pd.notna(row[col_idx]):
+                            amount_str = str(row[col_idx])
+                            # Handle amount formatting - remove non-breaking spaces (\xa0) and regular spaces
+                            amount_str = amount_str.replace('\xa0', '').replace(' ', '').replace(',', '.')
+                            # Look for amount patterns
+                            amount_match = re.search(r'([+-]?)([\d.]+)', amount_str)
+                            if amount_match:
+                                sign = -1 if amount_match.group(1) == '-' else 1
+                                clean_amount = amount_match.group(2)
+                                try:
+                                    test_amount = float(clean_amount) * sign
+                                    if abs(test_amount) > 0:  # Valid non-zero amount found
+                                        amount = test_amount
+                                        amount_col = col_idx
+                                        print(f"Row {i}: Found amount {amount} in Col{col_idx}")
+                                        break
+                                except:
+                                    continue
+                    
+                    if amount == 0 and amount_col is None:
+                        print(f"Row {i}: No valid amount found in any column")
+                    
+                    # Skip status check - import all transactions regardless of status
                     
                     if amount == 0:
+                        print(f"Row {i}: Skipped - zero amount")
                         continue
+                    
+                    print(f"Row {i}: Processing - amount={amount}")
                     
                     # Create full description combining category and detailed info
                     full_description = f"{category} - {description}" if description else category
@@ -101,14 +124,12 @@ class AlphaBankParser(BankStatementParser):
                     # Enhanced categorization using MCC codes and merchant patterns
                     enhanced_category = self._map_alpha_category(full_description, category)
                     
-                    # Detect SBP transfers
-                    if 'сбп' in full_description.lower() or 'sbp' in full_description.lower():
-                        enhanced_category = 'Financial'
-                        # For SBP transfers, determine if it's income or expense
-                        # Usually SBP income has positive amount, expense negative
-                        trans_type = 'expense' if amount < 0 else 'income'
-                    else:
-                        trans_type = 'expense' if amount < 0 else 'income'
+                    # Better transaction type detection
+                    trans_type = self._determine_transaction_type(full_description, category, amount)
+                    
+                    # Extract subcategory and contact info
+                    subcategory = self._extract_subcategory(description, enhanced_category)
+                    contact_phone = self._extract_phone_number(description) if 'сбп' in full_description.lower() else None
                     
                     transaction = Transaction(
                         date=trans_date,
@@ -116,12 +137,15 @@ class AlphaBankParser(BankStatementParser):
                         description=full_description,
                         transaction_type=trans_type,
                         category=enhanced_category,
+                        subcategory=subcategory,
+                        contact_phone=contact_phone,
                         reference=code
                     )
                     transactions.append(transaction)
                     
                 except Exception as e:
                     # Skip problematic rows
+                    print(f"Row {i}: Exception - {str(e)}")
                     continue
             
             return transactions
@@ -147,6 +171,141 @@ class AlphaBankParser(BankStatementParser):
                     except:
                         continue
         return 0.0
+    
+    def _determine_transaction_type(self, description: str, category: str, amount: float) -> str:
+        """Determine transaction type based on description, category, and amount"""
+        desc_lower = description.lower()
+        cat_lower = category.lower() if category else ""
+        
+        # Income indicators
+        income_keywords = [
+            'заработная плата', 'зарплата', 'оклад', 'salary', 'зп', 'выплата заработной платы',
+            'премия', 'premium', 'бонус', 'отпускных', 'внесение средств', 'от +7'
+        ]
+        
+        # Transfer indicators (neutral - neither income nor expense)
+        transfer_keywords = [
+            'перевод по сбп', 'через систему быстрых платежей', 'внутрибанковский перевод',
+            'перевод между счетами', 'со счёта', 'на счёт'
+        ]
+        
+        # Check for income patterns
+        if any(keyword in desc_lower for keyword in income_keywords):
+            return 'income'
+        
+        # Check for transfer patterns - these should be classified by amount direction
+        if any(keyword in desc_lower for keyword in transfer_keywords):
+            # For transfers, positive amount = incoming transfer (income), negative = outgoing (expense)
+            return 'income' if amount > 0 else 'expense'
+        
+        # Special cases for specific categories
+        if 'финансовые операции' in cat_lower:
+            # SBP QR payments are usually expenses
+            if 'qr по сбп' in desc_lower or 'qr коду' in desc_lower:
+                return 'expense'
+            # Other financial operations - classify by amount
+            return 'income' if amount > 0 else 'expense'
+        
+        # Default classification by amount sign
+        return 'income' if amount > 0 else 'expense'
+    
+    def _extract_subcategory(self, description: str, main_category: str) -> str:
+        """Extract subcategory from merchant/location information"""
+        if not description:
+            return None
+            
+        desc_lower = description.lower()
+        
+        # Common merchant patterns
+        merchant_patterns = {
+            'пятерочка': 'Пятёрочка',
+            'pyaterochka': 'Пятёрочка',
+            'magnit': 'Магнит',
+            'магнит': 'Магнит',
+            'okey': 'О`КЕЙ',
+            'окей': 'О`КЕЙ',
+            'gorzdrav': 'Горздрав',
+            'горздрав': 'Горздрав',
+            'apteka': 'Аптека',
+            'аптека': 'Аптека',
+            'tele2': 'Теле2',
+            'теле2': 'Теле2',
+            'megafon': 'МегаФон',
+            'мегафон': 'МегаФон',
+            'beeline': 'Билайн',
+            'билайн': 'Билайн',
+            'mts': 'МТС',
+            'мтс': 'МТС',
+            'sberbank': 'Сбербанк',
+            'сбербанк': 'Сбербанк',
+            'alfabank': 'Альфа-Банк',
+            'альфа': 'Альфа-Банк',
+            'mcdonalds': "McDonald's",
+            'kfc': 'KFC',
+            'burger king': 'Burger King',
+            'subway': 'Subway',
+            'rosinter': 'Росинтер',
+            'shokoladnitsa': 'Шоколадница',
+            'coffeehouse': 'Кофе Хаус'
+        }
+        
+        # Search for merchant patterns
+        for pattern, merchant in merchant_patterns.items():
+            if pattern in desc_lower:
+                return merchant
+        
+        # Extract from location patterns like "RU/Voronezh/MERCHANT_NAME"
+        location_match = re.search(r'RU/[^/]+/([^,\s]+)', description)
+        if location_match:
+            merchant_code = location_match.group(1)
+            # Clean merchant code
+            merchant_clean = merchant_code.replace('_', ' ').strip()
+            if len(merchant_clean) > 3:  # Only return if meaningful
+                return merchant_clean.title()
+        
+        # Extract from company names in transfers
+        company_patterns = [
+            r'в пользу\s+([^,\s]+)', 
+            r'получатель\s+([^,\s]+)',
+            r'платеж.*?в\s+([^,\s]+)'
+        ]
+        
+        for pattern in company_patterns:
+            match = re.search(pattern, desc_lower)
+            if match:
+                company = match.group(1).strip()
+                if len(company) > 3:
+                    return company.title()
+        
+        return None
+    
+    def _extract_phone_number(self, description: str) -> str:
+        """Extract phone number from SBP transfer description"""
+        if not description:
+            return None
+        
+        # Patterns for phone numbers in descriptions
+        phone_patterns = [
+            r'\+7(\d{10})',  # +7XXXXXXXXXX
+            r'\+7\d{3}\+{3}(\d{4})',  # +7XXX+++XXXX (masked)
+            r'на\s+\+7(\d{10})',  # на +7XXXXXXXXXX
+            r'от\s+\+7(\d{10})',  # от +7XXXXXXXXXX
+            r'на\s+\+7\d{3}\+{3}(\d{4})',  # на +7XXX+++XXXX
+            r'от\s+\+7\d{3}\+{3}(\d{4})'   # от +7XXX+++XXXX
+        ]
+        
+        for pattern in phone_patterns:
+            match = re.search(pattern, description)
+            if match:
+                phone_digits = match.group(1)
+                if len(phone_digits) >= 4:  # At least partial number
+                    if len(phone_digits) == 10:
+                        return f"+7{phone_digits}"
+                    else:
+                        # For masked numbers, return what we have
+                        return f"+7***{phone_digits}"
+        
+        return None
     
     def _map_alpha_category(self, description: str, category: str = None) -> str:
         """Map Alpha Bank transaction to category using MCC codes and merchant names"""
