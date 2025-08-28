@@ -188,3 +188,110 @@ msgstr "Переключить тему"
 
 msgid "Toggle menu"
 msgstr "Свернуть/развернуть меню"
+
+# Account management
+msgid "Account Management"
+msgstr "Управление счетами"
+
+msgid "Name"
+msgstr "Название"
+
+msgid "Inactive"
+msgstr "Неактивен"
+
+msgid "Are you sure?"
+msgstr "Вы уверены?"
+
+msgid "General Statistics"
+msgstr "Общая статистика"
+
+msgid "Total Accounts"
+msgstr "Всего счетов"
+
+msgid "Debit Cards"
+msgstr "Дебетовых"
+
+msgid "Credit Cards"
+msgstr "Кредитных"
+
+msgid "Add New Account"
+msgstr "Добавить новый счет"
+
+msgid "Owner"
+msgstr "Владелец"
+
+msgid "Select Owner"
+msgstr "Выберите владельца"
+
+msgid "Account Name"
+msgstr "Название счета"
+
+msgid "Example: Main VTB Card"
+msgstr "Например: Основная карта ВТБ"
+
+msgid "Account Type"
+msgstr "Тип счета"
+
+msgid "Select Type"
+msgstr "Выберите тип"
+
+msgid "Debit Card"
+msgstr "Дебетовая карта"
+
+msgid "Credit Card"
+msgstr "Кредитная карта"
+
+msgid "Savings Account"
+msgstr "Сберегательный счет"
+
+msgid "Cash"
+msgstr "Наличные"
+
+msgid "Savings Goal"
+msgstr "Накопления"
+
+msgid "Initial Balance"
+msgstr "Начальный баланс"
+
+msgid "Current balance on the account"
+msgstr "Текущий остаток на счете"
+
+msgid "Savings Goal Amount"
+msgstr "Цель накопления"
+
+msgid "Amount you plan to save"
+msgstr "Сумма, которую планируете накопить"
+
+msgid "Include in Total Balance"
+msgstr "Включать в общий баланс"
+
+msgid "Disable for credit cards to exclude them from total balance calculation"
+msgstr "Отключите для кредитных карт, чтобы исключить их из подсчета общего баланса"
+
+# Transactions
+msgid "All Transactions"
+msgstr "Все транзакции"
+
+msgid "Selected:"
+msgstr "Выбрано:"
+
+msgid "transactions"
+msgstr "транзакций"
+
+msgid "ALL IN DATABASE"
+msgstr "ВСЕ В БАЗЕ"
+
+msgid "Select"
+msgstr "Выбрать"
+
+msgid "All on current page"
+msgstr "Все на текущей странице"
+
+msgid "All in entire database"
+msgstr "Все во всей базе данных"
+
+msgid "Clear Selection"
+msgstr "Снять выбор"
+
+msgid "Change Category"
+msgstr "Изменить категорию"

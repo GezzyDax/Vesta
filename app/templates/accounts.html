@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}Accounts - Vesta{% endblock %}
+{% block title %}{{ _("Accounts") }} - Vesta{% endblock %}
 
 {% block content %}
 <div class="row mb-4">
     <div class="col-md-8">
-        <h1><i class="bi bi-credit-card"></i> Account Management</h1>
+        <h1><i class="bi bi-credit-card"></i> {{ _("Account Management") }}</h1>
     </div>
     <div class="col-md-4 text-end">
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAccountModal">
-            <i class="bi bi-plus-circle"></i> Add Account
+            <i class="bi bi-plus-circle"></i> {{ _("Add Account") }}
         </button>
     </div>
 </div>
@@ -28,9 +28,9 @@
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Название</th>
-                                    <th>Тип</th>
-                                    <th class="text-end">Баланс</th>
+                                    <th>{{ _("Name") }}</th>
+                                    <th>{{ _("Type") }}</th>
+                                    <th class="text-end">{{ _("Balance") }}</th>
                                     <th width="80"></th>
                                 </tr>
                             </thead>
@@ -40,7 +40,7 @@
                                     <td>
                                         <strong>{{ account.name }}</strong>
                                         {% if not account.is_active %}
-                                        <span class="badge bg-secondary ms-2">Неактивен</span>
+                                        <span class="badge bg-secondary ms-2">{{ _("Inactive") }}</span>
                                         {% endif %}
                                     </td>
                                     <td>
@@ -68,15 +68,15 @@
                                             <ul class="dropdown-menu">
                                                 <li>
                                                     <a class="dropdown-item" href="{{ url_for('main.edit_account', account_id=account.id) }}">
-                                                        <i class="bi bi-pencil"></i> Редактировать
+                                                        <i class="bi bi-pencil"></i> {{ _("Edit") }}
                                                     </a>
                                                 </li>
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li>
                                                     <form method="POST" action="{{ url_for('main.delete_account', account_id=account.id) }}" 
-                                                          style="display: inline;" onsubmit="return confirm('Вы уверены?')">
+                                                          style="display: inline;" onsubmit="return confirm('{{ _("Are you sure?") }}')">
                                                         <button type="submit" class="dropdown-item text-danger">
-                                                            <i class="bi bi-trash"></i> Удалить
+                                                            <i class="bi bi-trash"></i> {{ _("Delete") }}
                                                         </button>
                                                     </form>
                                                 </li>
@@ -86,7 +86,7 @@
                                 </tr>
                                 {% endfor %}
                                 <tr class="table-light">
-                                    <td colspan="2"><strong>Итого:</strong></td>
+                                    <td colspan="2"><strong>{{ _("Total:") }}</strong></td>
                                     <td class="text-end {% if user.get_total_balance() >= 0 %}balance-positive{% else %}balance-negative{% endif %}">
                                         <strong>{{ "{:,.2f}".format(user.get_total_balance()).replace(',', ' ') }} ₽</strong>
                                     </td>
@@ -98,10 +98,10 @@
                 {% else %}
                     <div class="text-center py-4">
                         <i class="bi bi-credit-card display-6 text-muted"></i>
-                        <p class="text-muted mt-2">У {{ user.name|lower }} нет добавленных счетов</p>
+                        <p class="text-muted mt-2">{{ _("%(user)s has no accounts added", user=user.name|lower) }}</p>
                         <button type="button" class="btn btn-outline-primary btn-sm" 
                                 onclick="openAddAccountModal({{ user.id }}, '{{ user.name }}')">
-                            <i class="bi bi-plus-circle"></i> Add Account
+                            <i class="bi bi-plus-circle"></i> {{ _("Add Account") }}
                         </button>
                     </div>
                 {% endif %}
@@ -116,7 +116,7 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <h6><i class="bi bi-bar-chart"></i> Общая статистика</h6>
+                <h6><i class="bi bi-bar-chart"></i> {{ _("General Statistics") }}</h6>
             </div>
             <div class="card-body">
                 <div class="row text-center">
@@ -124,25 +124,25 @@
                         <h5 class="text-success">
                             {{ "{:,.2f}".format(stats.total_balance).replace(',', ' ') }} ₽
                         </h5>
-                        <p class="text-muted mb-0">Общий баланс</p>
+                        <p class="text-muted mb-0">{{ _("Total Balance") }}</p>
                     </div>
                     <div class="col-md-3">
                         <h5 class="text-primary">
                             {{ stats.total_accounts }}
                         </h5>
-                        <p class="text-muted mb-0">Всего счетов</p>
+                        <p class="text-muted mb-0">{{ _("Total Accounts") }}</p>
                     </div>
                     <div class="col-md-3">
                         <h5 class="text-info">
                             {{ stats.debit_count }}
                         </h5>
-                        <p class="text-muted mb-0">Дебетовых</p>
+                        <p class="text-muted mb-0">{{ _("Debit Cards") }}</p>
                     </div>
                     <div class="col-md-3">
                         <h5 class="text-warning">
                             {{ stats.credit_count }}
                         </h5>
-                        <p class="text-muted mb-0">Кредитных</p>
+                        <p class="text-muted mb-0">{{ _("Credit Cards") }}</p>
                     </div>
                 </div>
             </div>
@@ -155,64 +155,64 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Добавить новый счет</h5>
+                <h5 class="modal-title">{{ _("Add New Account") }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" action="{{ url_for('main.add_account') }}">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Владелец *</label>
+                        <label class="form-label">{{ _("Owner") }} *</label>
                         <select name="user_id" class="form-select" required>
-                            <option value="">Выберите владельца</option>
+                            <option value="">{{ _("Select Owner") }}</option>
                             {% for user in users %}
                             <option value="{{ user.id }}">{{ user.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Название счета *</label>
-                        <input type="text" name="name" class="form-control" placeholder="Например: Основная карта ВТБ" required>
+                        <label class="form-label">{{ _("Account Name") }} *</label>
+                        <input type="text" name="name" class="form-control" placeholder="{{ _("Example: Main VTB Card") }}" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Тип счета *</label>
+                        <label class="form-label">{{ _("Account Type") }} *</label>
                         <select name="account_type" class="form-select" required>
-                            <option value="">Выберите тип</option>
-                            <option value="debit">Дебетовая карта</option>
-                            <option value="credit">Кредитная карта</option>
-                            <option value="savings">Сберегательный счет</option>
-                            <option value="cash">Наличные</option>
-                            <option value="savings_goal">Накопления</option>
+                            <option value="">{{ _("Select Type") }}</option>
+                            <option value="debit">{{ _("Debit Card") }}</option>
+                            <option value="credit">{{ _("Credit Card") }}</option>
+                            <option value="savings">{{ _("Savings Account") }}</option>
+                            <option value="cash">{{ _("Cash") }}</option>
+                            <option value="savings_goal">{{ _("Savings Goal") }}</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Начальный баланс</label>
+                        <label class="form-label">{{ _("Initial Balance") }}</label>
                         <div class="input-group">
                             <input type="number" name="balance" class="form-control" step="0.01" value="0.00">
                             <span class="input-group-text">₽</span>
                         </div>
-                        <div class="form-text">Текущий остаток на счете</div>
+                        <div class="form-text">{{ _("Current balance on the account") }}</div>
                     </div>
                     <div class="mb-3" id="goal-amount-section" style="display: none;">
-                        <label class="form-label">Цель накопления</label>
+                        <label class="form-label">{{ _("Savings Goal Amount") }}</label>
                         <div class="input-group">
                             <input type="number" name="goal_amount" class="form-control" step="0.01" placeholder="0.00">
                             <span class="input-group-text">₽</span>
                         </div>
-                        <div class="form-text">Сумма, которую планируете накопить</div>
+                        <div class="form-text">{{ _("Amount you plan to save") }}</div>
                     </div>
                     <div class="mb-3">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" name="include_in_balance" id="include_in_balance" checked>
                             <label class="form-check-label" for="include_in_balance">
-                                Включать в общий баланс
+                                {{ _("Include in Total Balance") }}
                             </label>
-                            <div class="form-text">Отключите для кредитных карт, чтобы исключить их из подсчета общего баланса</div>
+                            <div class="form-text">{{ _("Disable for credit cards to exclude them from total balance calculation") }}</div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <button type="submit" class="btn btn-primary">Добавить счет</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ _("Cancel") }}</button>
+                    <button type="submit" class="btn btn-primary">{{ _("Add Account") }}</button>
                 </div>
             </form>
         </div>

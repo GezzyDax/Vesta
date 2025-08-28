@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Транзакции - FamilyBudget{% endblock %}
+{% block title %}{{ _("Transactions") }} - Vesta{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -73,11 +73,11 @@
 {% block content %}
 <div class="row mb-4">
     <div class="col-md-8">
-        <h1><i class="bi bi-list-ul"></i> Все транзакции</h1>
+        <h1><i class="bi bi-list-ul"></i> {{ _("All Transactions") }}</h1>
     </div>
     <div class="col-md-4 text-end">
         <a href="{{ url_for('main.add_transaction') }}" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Добавить транзакцию
+            <i class="bi bi-plus-circle"></i> {{ _("Add Transaction") }}
         </a>
     </div>
 </div>
@@ -89,9 +89,9 @@
             <div class="col-md-6">
                 <h6 class="mb-0">
                     <i class="bi bi-check2-square"></i> 
-                    Выбрано: <span id="selectedCount">0</span> транзакций
+                    {{ _("Selected:") }} <span id="selectedCount">0</span> {{ _("transactions") }}
                     <span id="totalModeIndicator" class="badge bg-warning text-dark ms-2" style="display: none;">
-                        <i class="bi bi-database"></i> ВСЕ В БАЗЕ
+                        <i class="bi bi-database"></i> {{ _("ALL IN DATABASE") }}
                     </span>
                 </h6>
             </div>
@@ -99,23 +99,23 @@
                 <div class="btn-group" role="group">
                     <div class="dropdown">
                         <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-check-all"></i> Выбрать
+                            <i class="bi bi-check-all"></i> {{ _("Select") }}
                         </button>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="#" onclick="selectAll()">
-                                <i class="bi bi-check-square"></i> Все на текущей странице
+                                <i class="bi bi-check-square"></i> {{ _("All on current page") }}
                             </a></li>
                             <li><a class="dropdown-item" href="#" onclick="selectAllEverywhere()">
-                                <i class="bi bi-check-all"></i> Все во всей базе данных
+                                <i class="bi bi-check-all"></i> {{ _("All in entire database") }}
                             </a></li>
                         </ul>
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSelection()">
-                        <i class="bi bi-x-square"></i> Снять выбор
+                        <i class="bi bi-x-square"></i> {{ _("Clear Selection") }}
                     </button>
                     <div class="btn-group" role="group">
                         <button type="button" class="btn btn-sm btn-outline-warning dropdown-toggle" data-bs-toggle="dropdown">
-                            <i class="bi bi-pencil"></i> Изменить категорию
+                            <i class="bi bi-pencil"></i> {{ _("Change Category") }}
                         </button>
                         <ul class="dropdown-menu">
                             {% for category in categories %}

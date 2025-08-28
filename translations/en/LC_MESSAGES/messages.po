@@ -188,3 +188,110 @@ msgstr "Switch Theme"
 
 msgid "Toggle menu"
 msgstr "Toggle menu"
+
+# Account management
+msgid "Account Management"
+msgstr "Account Management"
+
+msgid "Name"
+msgstr "Name"
+
+msgid "Inactive"
+msgstr "Inactive"
+
+msgid "Are you sure?"
+msgstr "Are you sure?"
+
+msgid "General Statistics"
+msgstr "General Statistics"
+
+msgid "Total Accounts"
+msgstr "Total Accounts"
+
+msgid "Debit Cards"
+msgstr "Debit Cards"
+
+msgid "Credit Cards"
+msgstr "Credit Cards"
+
+msgid "Add New Account"
+msgstr "Add New Account"
+
+msgid "Owner"
+msgstr "Owner"
+
+msgid "Select Owner"
+msgstr "Select Owner"
+
+msgid "Account Name"
+msgstr "Account Name"
+
+msgid "Example: Main VTB Card"
+msgstr "Example: Main VTB Card"
+
+msgid "Account Type"
+msgstr "Account Type"
+
+msgid "Select Type"
+msgstr "Select Type"
+
+msgid "Debit Card"
+msgstr "Debit Card"
+
+msgid "Credit Card"
+msgstr "Credit Card"
+
+msgid "Savings Account"
+msgstr "Savings Account"
+
+msgid "Cash"
+msgstr "Cash"
+
+msgid "Savings Goal"
+msgstr "Savings Goal"
+
+msgid "Initial Balance"
+msgstr "Initial Balance"
+
+msgid "Current balance on the account"
+msgstr "Current balance on the account"
+
+msgid "Savings Goal Amount"
+msgstr "Savings Goal Amount"
+
+msgid "Amount you plan to save"
+msgstr "Amount you plan to save"
+
+msgid "Include in Total Balance"
+msgstr "Include in Total Balance"
+
+msgid "Disable for credit cards to exclude them from total balance calculation"
+msgstr "Disable for credit cards to exclude them from total balance calculation"
+
+# Transactions
+msgid "All Transactions"
+msgstr "All Transactions"
+
+msgid "Selected:"
+msgstr "Selected:"
+
+msgid "transactions"
+msgstr "transactions"
+
+msgid "ALL IN DATABASE"
+msgstr "ALL IN DATABASE"
+
+msgid "Select"
+msgstr "Select"
+
+msgid "All on current page"
+msgstr "All on current page"
+
+msgid "All in entire database"
+msgstr "All in entire database"
+
+msgid "Clear Selection"
+msgstr "Clear Selection"
+
+msgid "Change Category"
+msgstr "Change Category"
