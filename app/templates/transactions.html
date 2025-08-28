@@ -144,38 +144,38 @@
     <div class="card-body">
         <form method="GET" class="row g-3">
             <div class="col-md-2">
-                <label class="form-label">Тип</label>
+                <label class="form-label">{{ _("Type") }}</label>
                 <select name="type" class="form-select">
-                    <option value="">Все типы</option>
-                    <option value="income" {% if filters.type == 'income' %}selected{% endif %}>Доходы</option>
-                    <option value="expense" {% if filters.type == 'expense' %}selected{% endif %}>Расходы</option>
-                    <option value="transfer" {% if filters.type == 'transfer' %}selected{% endif %}>Переводы</option>
+                    <option value="">{{ _("All Types") }}</option>
+                    <option value="income" {% if filters.type == 'income' %}selected{% endif %}>{{ _("Income") }}</option>
+                    <option value="expense" {% if filters.type == 'expense' %}selected{% endif %}>{{ _("Expenses") }}</option>
+                    <option value="transfer" {% if filters.type == 'transfer' %}selected{% endif %}>{{ _("Transfers") }}</option>
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label">Пользователь</label>
+                <label class="form-label">{{ _("User") }}</label>
                 <select name="user_id" class="form-select">
-                    <option value="">Все</option>
+                    <option value="">{{ _("All") }}</option>
                     {% for user in users %}
                     <option value="{{ user.id }}" {% if filters.user_id == user.id %}selected{% endif %}>{{ user.name }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label">Категория</label>
+                <label class="form-label">{{ _("Category") }}</label>
                 <select name="category_id" class="form-select">
-                    <option value="">Все</option>
+                    <option value="">{{ _("All") }}</option>
                     {% for category in categories %}
                     <option value="{{ category.id }}" {% if filters.category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label">Дата с</label>
+                <label class="form-label">{{ _("Date From") }}</label>
                 <input type="date" name="date_from" class="form-control" value="{{ filters.date_from or '' }}">
             </div>
             <div class="col-md-2">
-                <label class="form-label">Дата по</label>
+                <label class="form-label">{{ _("Date To") }}</label>
                 <input type="date" name="date_to" class="form-control" value="{{ filters.date_to or '' }}">
             </div>
             <div class="col-md-2 d-flex align-items-end">
@@ -204,13 +204,13 @@
                                     <label class="form-check-label" for="selectAll"></label>
                                 </div>
                             </th>
-                            <th>Дата</th>
-                            <th>Тип</th>
-                            <th>Счета</th>
-                            <th class="text-end">Сумма</th>
-                            <th>Категория</th>
-                            <th>Описание</th>
-                            <th>Контакт</th>
+                            <th>{{ _("Date") }}</th>
+                            <th>{{ _("Type") }}</th>
+                            <th>{{ _("Accounts") }}</th>
+                            <th class="text-end">{{ _("Amount") }}</th>
+                            <th>{{ _("Category") }}</th>
+                            <th>{{ _("Description") }}</th>
+                            <th>{{ _("Contact") }}</th>
                             <th width="50"></th>
                         </tr>
                     </thead>

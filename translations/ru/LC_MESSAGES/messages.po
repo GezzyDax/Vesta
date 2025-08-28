@@ -129,9 +129,6 @@ msgstr "Тип"
 msgid "Account"
 msgstr "Счет"
 
-msgid "Accounts"
-msgstr "Счета"
-
 msgid "Amount"
 msgstr "Сумма"
 
@@ -146,6 +143,21 @@ msgstr "Баланс"
 
 msgid "Total:"
 msgstr "Итого:"
+
+msgid "All Types"
+msgstr "Все типы"
+
+msgid "All"
+msgstr "Все"
+
+msgid "Date From"
+msgstr "Дата с"
+
+msgid "Date To"
+msgstr "Дата по"
+
+msgid "Contact"
+msgstr "Контакт"
 
 # Common actions
 msgid "Add"

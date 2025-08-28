@@ -31,11 +31,10 @@ def create_app(config_class=Config):
     # Глобальный контекстный процессор
     @app.context_processor
     def inject_conf_vars():
-        from app.translation import get_locale, translate_text
         return {
             'LANGUAGES': app.config['LANGUAGES'],
-            'CURRENT_LANGUAGE': get_locale(),
-            '_': translate_text  # Делаем функцию перевода доступной в шаблонах
+            'CURRENT_LANGUAGE': get_current_locale(),
+            '_': _  # Используем функцию из app.i18n
         }
     
     # Регистрация blueprints

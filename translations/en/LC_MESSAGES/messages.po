@@ -129,9 +129,6 @@ msgstr "Type"
 msgid "Account"
 msgstr "Account"
 
-msgid "Accounts"
-msgstr "Accounts"
-
 msgid "Amount"
 msgstr "Amount"
 
@@ -146,6 +143,21 @@ msgstr "Balance"
 
 msgid "Total:"
 msgstr "Total:"
+
+msgid "All Types"
+msgstr "All Types"
+
+msgid "All"
+msgstr "All"
+
+msgid "Date From"
+msgstr "Date From"
+
+msgid "Date To"
+msgstr "Date To"
+
+msgid "Contact"
+msgstr "Contact"
 
 # Common actions
 msgid "Add"
