@@ -1,4 +1,5 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session, current_app
+from app.i18n import gettext as _, lazy_gettext as _l
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 import os
@@ -7,7 +8,7 @@ from werkzeug.utils import secure_filename
 from app import db
 from app.models import (User, Account, Transaction, Category, DataVersion, 
                        TransactionSnapshot, AccountSnapshot, ImportPreview, ImportPreviewTransaction,
-                       Contact, UserProfile, MerchantRule)
+                       Contact, UserProfile, MerchantRule, MCCCodeMapping, CategoryAutoUpdate)
 from app.bank_import import BankImportService
 from app.version import get_app_version, get_version_info
 from sqlalchemy import func, desc, text
@@ -1200,6 +1201,13 @@ def restore_version(version_id):
     return redirect(url_for('main.data_versions'))
 
 
+@bp.route('/set_language/<language>')
+def set_language(language=None):
+    """Switch application language"""
+    session['language'] = language
+    return redirect(request.referrer or url_for('main.dashboard'))
+
+
 @bp.route('/about')
 def about():
     """Show application version and info"""
@@ -1806,6 +1814,178 @@ def test_merchant_rule():
         })
     else:
         return jsonify({'matched': False})
+
+
+# ============ AUTO CATEGORIZATION MANAGEMENT ============
+
+@bp.route('/admin/auto-categorization')
+def auto_categorization_admin():
+    """Админка для управления автокатегоризацией"""
+    # Получаем статистику по MCC кодам
+    mcc_stats = {
+        'total_mappings': MCCCodeMapping.query.filter_by(is_active=True).count(),
+        'total_codes': MCCCodeMapping.query.count(),
+        'recent_additions': MCCCodeMapping.query.order_by(desc(MCCCodeMapping.created_at)).limit(5).all()
+    }
+    
+    # Получаем предложения обновлений категорий
+    pending_updates = CategoryAutoUpdate.query.filter_by(status='pending').order_by(desc(CategoryAutoUpdate.confidence_score)).all()
+    applied_updates = CategoryAutoUpdate.query.filter_by(status='applied').order_by(desc(CategoryAutoUpdate.applied_at)).limit(10).all()
+    
+    return render_template('admin/auto_categorization.html', 
+                         mcc_stats=mcc_stats,
+                         pending_updates=pending_updates,
+                         applied_updates=applied_updates)
+
+
+@bp.route('/admin/auto-categorization/analyze', methods=['POST'])
+def analyze_transactions():
+    """Запустить анализ транзакций для предложений категорий"""
+    try:
+        from app.category_manager import CategoryManager
+        
+        manager = CategoryManager(db.session)
+        suggestions = manager.create_auto_update_suggestions()
+        
+        flash(f'Анализ завершен! Создано {len(suggestions)} новых предложений категорий', 'success')
+        
+    except Exception as e:
+        flash(f'Ошибка при анализе: {str(e)}', 'danger')
+    
+    return redirect(url_for('main.auto_categorization_admin'))
+
+
+@bp.route('/admin/auto-categorization/populate-mcc', methods=['POST'])
+def populate_mcc_codes():
+    """Заполнить базовые MCC коды"""
+    try:
+        from app.category_manager import CategoryManager
+        
+        manager = CategoryManager(db.session)
+        new_count = manager.populate_mcc_mappings()
+        
+        flash(f'Добавлено {new_count} новых MCC кодов в справочник', 'success')
+        
+    except Exception as e:
+        flash(f'Ошибка при заполнении MCC кодов: {str(e)}', 'danger')
+    
+    return redirect(url_for('main.auto_categorization_admin'))
+
+
+@bp.route('/admin/auto-categorization/populate-merchants', methods=['POST'])
+def populate_merchant_rules():
+    """Заполнить базовые правила мерчантов"""
+    try:
+        from app.category_manager import CategoryManager
+        
+        manager = CategoryManager(db.session)
+        new_count = manager.populate_default_merchant_rules()
+        
+        flash(f'Добавлено {new_count} новых правил мерчантов', 'success')
+        
+    except Exception as e:
+        flash(f'Ошибка при заполнении правил мерчантов: {str(e)}', 'danger')
+    
+    return redirect(url_for('main.auto_categorization_admin'))
+
+
+@bp.route('/admin/auto-categorization/update/<int:update_id>/approve', methods=['POST'])
+def approve_category_update(update_id):
+    """Одобрить предложение обновления категории"""
+    try:
+        update = CategoryAutoUpdate.query.get_or_404(update_id)
+        update.status = 'approved'
+        
+        from app.category_manager import CategoryManager
+        manager = CategoryManager(db.session)
+        
+        if manager.apply_auto_update(update_id, 'Admin'):
+            flash(f'Предложение "{update.category_name}" одобрено и применено', 'success')
+        else:
+            flash(f'Ошибка при применении предложения', 'danger')
+            
+    except Exception as e:
+        flash(f'Ошибка: {str(e)}', 'danger')
+    
+    return redirect(url_for('main.auto_categorization_admin'))
+
+
+@bp.route('/admin/auto-categorization/update/<int:update_id>/reject', methods=['POST'])
+def reject_category_update(update_id):
+    """Отклонить предложение обновления категории"""
+    try:
+        update = CategoryAutoUpdate.query.get_or_404(update_id)
+        update.status = 'rejected'
+        db.session.commit()
+        
+        flash(f'Предложение "{update.category_name}" отклонено', 'info')
+        
+    except Exception as e:
+        flash(f'Ошибка: {str(e)}', 'danger')
+    
+    return redirect(url_for('main.auto_categorization_admin'))
+
+
+@bp.route('/admin/mcc-codes')
+def mcc_codes_management():
+    """Управление MCC кодами"""
+    mcc_codes = MCCCodeMapping.query.order_by(MCCCodeMapping.mcc_code).all()
+    categories = Category.query.filter_by(category_type='expense').order_by(Category.name).all()
+    
+    return render_template('admin/mcc_codes.html', mcc_codes=mcc_codes, categories=categories)
+
+
+@bp.route('/admin/mcc-codes/add', methods=['POST'])
+def add_mcc_code():
+    """Добавить новый MCC код"""
+    try:
+        mcc_code = request.form['mcc_code'].strip()
+        description = request.form['description'].strip()
+        category_id = int(request.form['category_id'])
+        subcategory = request.form.get('subcategory', '').strip()
+        confidence = int(request.form.get('confidence', 90))
+        
+        # Проверяем, существует ли уже такой код
+        existing = MCCCodeMapping.query.filter_by(mcc_code=mcc_code).first()
+        if existing:
+            flash(f'MCC код {mcc_code} уже существует', 'warning')
+            return redirect(url_for('main.mcc_codes_management'))
+        
+        new_mcc = MCCCodeMapping(
+            mcc_code=mcc_code,
+            description=description,
+            category_id=category_id,
+            subcategory=subcategory if subcategory else None,
+            confidence=confidence
+        )
+        
+        db.session.add(new_mcc)
+        db.session.commit()
+        
+        flash(f'MCC код {mcc_code} успешно добавлен', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка при добавлении MCC кода: {str(e)}', 'danger')
+    
+    return redirect(url_for('main.mcc_codes_management'))
+
+
+@bp.route('/admin/mcc-codes/<int:mcc_id>/toggle', methods=['POST'])
+def toggle_mcc_code(mcc_id):
+    """Активировать/деактивировать MCC код"""
+    try:
+        mcc_code = MCCCodeMapping.query.get_or_404(mcc_id)
+        mcc_code.is_active = not mcc_code.is_active
+        db.session.commit()
+        
+        status = 'активирован' if mcc_code.is_active else 'деактивирован'
+        flash(f'MCC код {mcc_code.mcc_code} {status}', 'info')
+        
+    except Exception as e:
+        flash(f'Ошибка: {str(e)}', 'danger')
+    
+    return redirect(url_for('main.mcc_codes_management'))
 
 
 # Context processor to make version available in all templates

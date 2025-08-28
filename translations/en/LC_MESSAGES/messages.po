@@ -1,0 +1,190 @@
+# English translations for Vesta.
+# Copyright (C) 2024 Vesta Team
+# This file is distributed under the same license as the Vesta project.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Vesta 1.0\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2024-01-01 00:00+0000\n"
+"PO-Revision-Date: 2024-01-01 00:00+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: en\n"
+"Language-Team: en <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.9.1\n"
+
+# Navigation
+msgid "Main"
+msgstr "Main"
+
+msgid "Dashboard"
+msgstr "Dashboard"
+
+msgid "Accounts"
+msgstr "Accounts"
+
+msgid "Transactions"
+msgstr "Transactions"
+
+msgid "Analytics"
+msgstr "Analytics"
+
+msgid "By Categories"
+msgstr "By Categories"
+
+msgid "Time Analysis"
+msgstr "Time Analysis"
+
+msgid "By Users"
+msgstr "By Users"
+
+msgid "By Merchants"
+msgstr "By Merchants"
+
+msgid "Management"
+msgstr "Management"
+
+msgid "Add Transaction"
+msgstr "Add Transaction"
+
+msgid "Import Statements"
+msgstr "Import Statements"
+
+msgid "Categories"
+msgstr "Categories"
+
+msgid "Merchant Rules"
+msgstr "Merchant Rules"
+
+msgid "System"
+msgstr "System"
+
+msgid "Auto Categorization"
+msgstr "Auto Categorization"
+
+msgid "Data Versions"
+msgstr "Data Versions"
+
+msgid "Phone Book"
+msgstr "Phone Book"
+
+msgid "Profiles"
+msgstr "Profiles"
+
+msgid "About System"
+msgstr "About System"
+
+msgid "Soon"
+msgstr "Soon"
+
+# Dashboard
+msgid "Income"
+msgstr "Income"
+
+msgid "Expenses"
+msgstr "Expenses"
+
+msgid "Transfers"
+msgstr "Transfers"
+
+msgid "Total Balance"
+msgstr "Total Balance"
+
+msgid "Recent Transactions"
+msgstr "Recent Transactions"
+
+msgid "All transactions"
+msgstr "All transactions"
+
+msgid "Quick Actions"
+msgstr "Quick Actions"
+
+msgid "Add income"
+msgstr "Add income"
+
+msgid "Add expense"
+msgstr "Add expense"
+
+msgid "Transfer between accounts"
+msgstr "Transfer between accounts"
+
+# Transaction types
+msgid "Expense"
+msgstr "Expense"
+
+msgid "Transfer"
+msgstr "Transfer"
+
+# Table headers
+msgid "Date"
+msgstr "Date"
+
+msgid "Type"
+msgstr "Type"
+
+msgid "Account"
+msgstr "Account"
+
+msgid "Accounts"
+msgstr "Accounts"
+
+msgid "Amount"
+msgstr "Amount"
+
+msgid "Category"
+msgstr "Category"
+
+msgid "Description"
+msgstr "Description"
+
+msgid "Balance"
+msgstr "Balance"
+
+msgid "Total:"
+msgstr "Total:"
+
+# Common actions
+msgid "Add"
+msgstr "Add"
+
+msgid "Edit"
+msgstr "Edit"
+
+msgid "Delete"
+msgstr "Delete"
+
+msgid "Save"
+msgstr "Save"
+
+msgid "Cancel"
+msgstr "Cancel"
+
+msgid "Back"
+msgstr "Back"
+
+# Messages
+msgid "No transactions"
+msgstr "No transactions"
+
+msgid "Add first transaction"
+msgstr "Add first transaction"
+
+msgid "No accounts added"
+msgstr "No accounts added"
+
+msgid "Add account"
+msgstr "Add account"
+
+# Language
+msgid "Language"
+msgstr "Language"
+
+msgid "Switch Theme"
+msgstr "Switch Theme"
+
+msgid "Toggle menu"
+msgstr "Toggle menu"

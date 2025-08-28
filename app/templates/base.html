@@ -1,159 +1,752 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Vesta{% endblock %}</title>
+    <title>{% block title %}Vesta - Семейные финансы{% endblock %}</title>
     
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Font Awesome для дополнительных иконок -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- DataTables CSS -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     
     <style>
-        .navbar-brand {
-            font-weight: bold;
+        :root {
+            --vesta-primary: #0d47a1;
+            --vesta-secondary: #42a5f5;
+            --vesta-success: #2e7d32;
+            --vesta-danger: #d32f2f;
+            --vesta-warning: #f57c00;
+            --vesta-info: #0288d1;
+            --vesta-light: #f5f5f5;
+            --vesta-dark: #212121;
+            --sidebar-width: 280px;
+            --sidebar-collapsed-width: 70px;
         }
-        .card-balance {
+
+        /* Dark theme variables */
+        [data-bs-theme="dark"] {
+            --vesta-light: #2d3748;
+            --vesta-dark: #1a202c;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bs-body-bg);
+            transition: all 0.3s ease;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: var(--sidebar-width);
+            background: linear-gradient(135deg, var(--vesta-primary) 0%, var(--vesta-secondary) 100%);
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            transition: width 0.3s ease;
+            z-index: 1000;
+            overflow-x: hidden;
+        }
+
+        .sidebar.collapsed {
+            width: var(--sidebar-collapsed-width);
+        }
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            color: white;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-brand:hover {
+            color: white;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .sidebar-brand i {
+            font-size: 1.5rem;
+            margin-right: 0.5rem;
+            min-width: 38px;
+        }
+
+        .sidebar-brand .brand-text {
+            font-weight: bold;
             font-size: 1.2rem;
-            font-weight: bold;
+            white-space: nowrap;
+            opacity: 1;
+            transition: opacity 0.3s ease;
         }
-        .balance-positive {
-            color: #28a745;
+
+        .sidebar.collapsed .brand-text {
+            opacity: 0;
         }
-        .balance-negative {
-            color: #dc3545;
+
+        .sidebar-nav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
         }
-        .transaction-type-income {
-            color: #28a745;
+
+        .nav-group {
+            margin: 0;
         }
-        .transaction-type-expense {
-            color: #dc3545;
+
+        .nav-group-title {
+            padding: 0.75rem 1rem 0.5rem;
+            color: rgba(255,255,255,0.7);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            opacity: 1;
+            transition: opacity 0.3s ease;
         }
-        .transaction-type-transfer {
-            color: #007bff;
+
+        .sidebar.collapsed .nav-group-title {
+            opacity: 0;
+            height: 0;
+            padding: 0;
+            margin: 0;
         }
-        .footer {
-            margin-top: 50px;
-            padding: 20px 0;
-            border-top: 1px solid #dee2e6;
-            color: #6c757d;
+
+        .nav-item {
+            margin: 0;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            color: rgba(255,255,255,0.9);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-link:hover {
+            color: white;
+            background: rgba(255,255,255,0.1);
+            border-left-color: rgba(255,255,255,0.5);
+        }
+
+        .nav-link.active {
+            background: rgba(255,255,255,0.2);
+            border-left-color: white;
+            color: white;
+        }
+
+        .nav-link i {
+            min-width: 38px;
+            font-size: 1.1rem;
+            margin-right: 0.5rem;
+        }
+
+        .nav-link .nav-text {
+            white-space: nowrap;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar.collapsed .nav-text {
+            opacity: 0;
+        }
+
+        /* Badge for notifications */
+        .nav-badge {
+            margin-left: auto;
+            font-size: 0.7rem;
+            padding: 0.2rem 0.4rem;
+            border-radius: 10px;
+            background: var(--vesta-warning);
+            color: white;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar.collapsed .nav-badge {
+            opacity: 0;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            transition: margin-left 0.3s ease;
+            min-height: 100vh;
+            background-color: var(--bs-body-bg);
+        }
+
+        .main-content.sidebar-collapsed {
+            margin-left: var(--sidebar-collapsed-width);
+        }
+
+        /* Header */
+        .main-header {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+
+        [data-bs-theme="dark"] .main-header {
+            background: var(--bs-dark);
+            border-bottom: 1px solid var(--bs-border-color);
+        }
+
+        .sidebar-toggle {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            color: var(--bs-body-color);
+            cursor: pointer;
+            padding: 0.5rem;
+            margin-right: 1rem;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-toggle:hover {
+            background: var(--bs-secondary-bg);
+        }
+
+        .page-title {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--bs-body-color);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .theme-toggle {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            color: var(--bs-body-color);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            background: var(--bs-secondary-bg);
+            transform: rotate(180deg);
+        }
+
+        /* Content Area */
+        .content-wrapper {
+            padding: 0 1.5rem 2rem;
+        }
+
+        /* Cards */
+        .card {
+            border: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        .card-header {
+            background: var(--bs-light);
+            border-bottom: 1px solid var(--bs-border-color);
+            border-radius: 12px 12px 0 0 !important;
+            font-weight: 600;
+        }
+
+        [data-bs-theme="dark"] .card-header {
+            background: var(--bs-dark);
+        }
+
+        /* Buttons */
+        .btn {
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--vesta-primary), var(--vesta-secondary));
+            border: none;
+        }
+
+        /* Alerts */
+        .alert {
+            border: none;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+
+        .alert-success {
+            border-left-color: var(--vesta-success);
+        }
+
+        .alert-danger {
+            border-left-color: var(--vesta-danger);
+        }
+
+        .alert-warning {
+            border-left-color: var(--vesta-warning);
+        }
+
+        .alert-info {
+            border-left-color: var(--vesta-info);
+        }
+
+        /* Transaction Colors */
+        .transaction-income { color: var(--vesta-success); }
+        .transaction-expense { color: var(--vesta-danger); }
+        .transaction-transfer { color: var(--vesta-info); }
+
+        .balance-positive { 
+            color: var(--vesta-success); 
+            font-weight: 600;
+        }
+        .balance-negative { 
+            color: var(--vesta-danger); 
+            font-weight: 600;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .main-content.sidebar-collapsed {
+                margin-left: 0;
+            }
+
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0,0,0,0.5);
+                z-index: 999;
+            }
+
+            .sidebar-overlay.show {
+                display: block;
+            }
+        }
+
+        /* Loading Animation */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Tooltip Enhancement */
+        .tooltip {
+            font-size: 0.8rem;
+        }
+
+        /* Breadcrumb */
+        .breadcrumb {
+            background: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .breadcrumb-item + .breadcrumb-item::before {
+            content: ">";
         }
     </style>
+
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Навигация -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('main.dashboard') }}">
-                <i class="bi bi-house-heart"></i> Vesta
-            </a>
-            
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}" href="{{ url_for('main.dashboard') }}">
-                            <i class="bi bi-speedometer2"></i> Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'main.transactions' %}active{% endif %}" href="{{ url_for('main.transactions') }}">
-                            <i class="bi bi-list-ul"></i> Transactions
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'main.accounts' %}active{% endif %}" href="{{ url_for('main.accounts') }}">
-                            <i class="bi bi-credit-card"></i> Accounts
-                        </a>
-                    </li>
-                </ul>
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <!-- Brand -->
+        <a href="{{ url_for('main.dashboard') }}" class="sidebar-brand">
+            <i class="fas fa-home-heart"></i>
+            <span class="brand-text">Vesta</span>
+        </a>
+
+        <!-- Navigation -->
+        <ul class="sidebar-nav">
+            <!-- Основное -->
+            <li class="nav-group">
+                <div class="nav-group-title">{{ _("Main") }}</div>
                 
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('main.add_transaction') }}">
-                            <i class="bi bi-plus-circle"></i> Add Transaction
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('main.import_bank_statement') }}">
-                            <i class="bi bi-file-earmark-arrow-up"></i> Import
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint in ['main.merchant_rules', 'main.add_merchant_rule', 'main.edit_merchant_rule'] %}active{% endif %}" href="{{ url_for('main.merchant_rules') }}">
-                            <i class="bi bi-tags"></i> Merchants
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'main.data_versions' %}active{% endif %}" href="{{ url_for('main.data_versions') }}">
-                            <i class="bi bi-clock-history"></i> Versions
-                        </a>
-                    </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {% if request.endpoint in ['main.profile', 'main.contacts', 'main.add_contact', 'main.edit_contact'] %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i> Profile
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item {% if request.endpoint == 'main.profile' %}active{% endif %}" href="{{ url_for('main.profile') }}">
-                                <i class="bi bi-person-gear"></i> User Profile
-                            </a></li>
-                            <li><a class="dropdown-item {% if request.endpoint in ['main.contacts', 'main.add_contact', 'main.edit_contact'] %}active{% endif %}" href="{{ url_for('main.contacts') }}">
-                                <i class="bi bi-telephone-book"></i> Phone Book
-                            </a></li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
-        </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span class="nav-text">{{ _("Dashboard") }}</span>
+                    </a>
+                </div>
+
+                <div class="nav-item">
+                    <a href="{{ url_for('main.accounts') }}" class="nav-link {% if request.endpoint == 'main.accounts' %}active{% endif %}">
+                        <i class="fas fa-wallet"></i>
+                        <span class="nav-text">{{ _("Accounts") }}</span>
+                    </a>
+                </div>
+
+                <div class="nav-item">
+                    <a href="{{ url_for('main.transactions') }}" class="nav-link {% if request.endpoint == 'main.transactions' %}active{% endif %}">
+                        <i class="fas fa-list"></i>
+                        <span class="nav-text">{{ _("Transactions") }}</span>
+                    </a>
+                </div>
+            </li>
+
+            <!-- Аналитика -->
+            <li class="nav-group">
+                <div class="nav-group-title">{{ _("Analytics") }}</div>
+                
+                <div class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="fas fa-chart-pie"></i>
+                        <span class="nav-text">{{ _("By Categories") }}</span>
+                        <span class="nav-badge">{{ _("Soon") }}</span>
+                    </a>
+                </div>
+
+                <div class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="fas fa-chart-line"></i>
+                        <span class="nav-text">{{ _("Time Analysis") }}</span>
+                        <span class="nav-badge">{{ _("Soon") }}</span>
+                    </a>
+                </div>
+
+                <div class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="fas fa-users"></i>
+                        <span class="nav-text">{{ _("By Users") }}</span>
+                        <span class="nav-badge">{{ _("Soon") }}</span>
+                    </a>
+                </div>
+
+                <div class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="fas fa-store"></i>
+                        <span class="nav-text">{{ _("By Merchants") }}</span>
+                        <span class="nav-badge">{{ _("Soon") }}</span>
+                    </a>
+                </div>
+            </li>
+
+            <!-- Управление -->
+            <li class="nav-group">
+                <div class="nav-group-title">{{ _("Management") }}</div>
+                
+                <div class="nav-item">
+                    <a href="{{ url_for('main.add_transaction') }}" class="nav-link {% if request.endpoint == 'main.add_transaction' %}active{% endif %}">
+                        <i class="fas fa-plus-circle"></i>
+                        <span class="nav-text">{{ _("Add Transaction") }}</span>
+                    </a>
+                </div>
+
+                <div class="nav-item">
+                    <a href="{{ url_for('main.import_bank_statement') }}" class="nav-link {% if request.endpoint == 'main.import_bank_statement' %}active{% endif %}">
+                        <i class="fas fa-file-import"></i>
+                        <span class="nav-text">{{ _("Import Statements") }}</span>
+                    </a>
+                </div>
+
+                <div class="nav-item">
+                    <a href="{{ url_for('main.categories') }}" class="nav-link {% if request.endpoint in ['main.categories', 'main.add_category', 'main.edit_category'] %}active{% endif %}">
+                        <i class="fas fa-tags"></i>
+                        <span class="nav-text">{{ _("Categories") }}</span>
+                    </a>
+                </div>
+
+                <div class="nav-item">
+                    <a href="{{ url_for('main.merchant_rules') }}" class="nav-link {% if request.endpoint in ['main.merchant_rules', 'main.add_merchant_rule', 'main.edit_merchant_rule'] %}active{% endif %}">
+                        <i class="fas fa-store-alt"></i>
+                        <span class="nav-text">{{ _("Merchant Rules") }}</span>
+                    </a>
+                </div>
+            </li>
+
+            <!-- Система -->
+            <li class="nav-group">
+                <div class="nav-group-title">{{ _("System") }}</div>
+                
+                <div class="nav-item">
+                    <a href="{{ url_for('main.auto_categorization_admin') }}" class="nav-link {% if request.endpoint in ['main.auto_categorization_admin', 'main.mcc_codes_management'] %}active{% endif %}">
+                        <i class="fas fa-robot"></i>
+                        <span class="nav-text">{{ _("Auto Categorization") }}</span>
+                    </a>
+                </div>
+
+                <div class="nav-item">
+                    <a href="{{ url_for('main.data_versions') }}" class="nav-link {% if request.endpoint in ['main.data_versions', 'main.version_details'] %}active{% endif %}">
+                        <i class="fas fa-history"></i>
+                        <span class="nav-text">{{ _("Data Versions") }}</span>
+                    </a>
+                </div>
+
+                <div class="nav-item">
+                    <a href="{{ url_for('main.contacts') }}" class="nav-link {% if request.endpoint in ['main.contacts', 'main.add_contact', 'main.edit_contact', 'main.contact_history'] %}active{% endif %}">
+                        <i class="fas fa-address-book"></i>
+                        <span class="nav-text">{{ _("Phone Book") }}</span>
+                    </a>
+                </div>
+
+                <div class="nav-item">
+                    <a href="{{ url_for('main.profile') }}" class="nav-link {% if request.endpoint == 'main.profile' %}active{% endif %}">
+                        <i class="fas fa-user-cog"></i>
+                        <span class="nav-text">{{ _("Profiles") }}</span>
+                    </a>
+                </div>
+
+                <div class="nav-item">
+                    <a href="{{ url_for('main.about') }}" class="nav-link {% if request.endpoint == 'main.about' %}active{% endif %}">
+                        <i class="fas fa-info-circle"></i>
+                        <span class="nav-text">{{ _("About System") }}</span>
+                    </a>
+                </div>
+            </li>
+        </ul>
     </nav>
 
-    <!-- Контент -->
-    <div class="container mt-4">
-        <!-- Уведомления -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        {% block content %}{% endblock %}
-    </div>
-
-    <!-- Футер -->
-    <div class="footer text-center">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-6 text-md-start text-center">
-                    <small>&copy; 2025 Vesta. Taking control of your family finances.</small>
-                </div>
-                <div class="col-md-6 text-md-end text-center">
-                    <small>
-                        <a href="{{ url_for('main.about') }}" class="text-muted text-decoration-none">
-                            {{ app_version }}
-                        </a>
-                    </small>
-                </div>
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="d-flex align-items-center">
+                <button class="sidebar-toggle" id="sidebarToggle" title="{{ _("Toggle menu") }}">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 class="page-title">{% block page_title %}Vesta{% endblock %}</h1>
             </div>
+
+            <div class="header-actions">
+                {% block header_actions %}{% endblock %}
+                
+                <!-- Language Switcher -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="languageDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="{{ _("Language") }}">
+                        <i class="fas fa-globe"></i>
+                        {{ LANGUAGES[CURRENT_LANGUAGE] }}
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="languageDropdown">
+                        {% for code, name in LANGUAGES.items() %}
+                        <li>
+                            <a class="dropdown-item{% if CURRENT_LANGUAGE == code %} active{% endif %}" href="{{ url_for('main.set_language', language=code) }}">
+                                {{ name }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                
+                <button class="theme-toggle" id="themeToggle" title="{{ _("Switch Theme") }}">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <div class="content-wrapper">
+            <!-- Breadcrumb -->
+            {% block breadcrumb %}{% endblock %}
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="mb-4">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                {% if category == 'success' %}
+                                    <i class="fas fa-check-circle me-2"></i>
+                                {% elif category == 'error' or category == 'danger' %}
+                                    <i class="fas fa-exclamation-circle me-2"></i>
+                                {% elif category == 'warning' %}
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                {% elif category == 'info' %}
+                                    <i class="fas fa-info-circle me-2"></i>
+                                {% endif %}
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Page Content -->
+            {% block content %}{% endblock %}
         </div>
-    </div>
+    </main>
 
     <!-- JavaScript -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+        // Theme Management
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const htmlElement = document.documentElement;
+        
+        // Load saved theme or default to light
+        const currentTheme = localStorage.getItem('vesta-theme') || 'light';
+        htmlElement.setAttribute('data-bs-theme', currentTheme);
+        updateThemeIcon(currentTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const newTheme = htmlElement.getAttribute('data-bs-theme') === 'light' ? 'dark' : 'light';
+            htmlElement.setAttribute('data-bs-theme', newTheme);
+            localStorage.setItem('vesta-theme', newTheme);
+            updateThemeIcon(newTheme);
+        });
+
+        function updateThemeIcon(theme) {
+            themeIcon.className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+        }
+
+        // Sidebar Management
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const mainContent = document.getElementById('mainContent');
+
+        // Load saved sidebar state
+        const sidebarCollapsed = localStorage.getItem('vesta-sidebar-collapsed') === 'true';
+        if (sidebarCollapsed && window.innerWidth > 768) {
+            sidebar.classList.add('collapsed');
+            mainContent.classList.add('sidebar-collapsed');
+        }
+
+        sidebarToggle.addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                // Mobile behavior - show/hide sidebar
+                sidebar.classList.toggle('show');
+                sidebarOverlay.classList.toggle('show');
+            } else {
+                // Desktop behavior - collapse/expand sidebar
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('sidebar-collapsed');
+                localStorage.setItem('vesta-sidebar-collapsed', sidebar.classList.contains('collapsed'));
+            }
+        });
+
+        sidebarOverlay.addEventListener('click', () => {
+            sidebar.classList.remove('show');
+            sidebarOverlay.classList.remove('show');
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768) {
+                sidebar.classList.remove('show');
+                sidebarOverlay.classList.remove('show');
+                
+                // Restore desktop sidebar state
+                if (localStorage.getItem('vesta-sidebar-collapsed') === 'true') {
+                    sidebar.classList.add('collapsed');
+                    mainContent.classList.add('sidebar-collapsed');
+                }
+            } else {
+                sidebar.classList.remove('collapsed');
+                mainContent.classList.remove('sidebar-collapsed');
+            }
+        });
+
+        // Enhanced DataTables default configuration
+        if ($.fn.DataTable) {
+            $.extend(true, $.fn.dataTable.defaults, {
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/Russian.json"
+                },
+                "responsive": true,
+                "pageLength": 25,
+                "order": [[0, "desc"]], // Default sort by first column descending
+                "dom": '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>><"row"<"col-sm-12"tr>><"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+            });
+        }
+
+        // Tooltip initialization
+        document.addEventListener('DOMContentLoaded', function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+
+        // Auto-hide alerts after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000);
+            });
+        });
+
+        // Enhanced form validation feedback
+        document.addEventListener('DOMContentLoaded', function() {
+            const forms = document.querySelectorAll('.needs-validation');
+            forms.forEach(form => {
+                form.addEventListener('submit', function(event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                });
+            });
+        });
+    </script>
+
     {% block scripts %}{% endblock %}
 </body>
 </html>

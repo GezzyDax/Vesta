@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Автоматическое обновление категорий - Vesta{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h2><i class="fas fa-robot"></i> Автоматическое обновление категорий</h2>
+            <p class="text-muted">Управление системой автоматической категоризации транзакций</p>
+        </div>
+    </div>
+
+    <!-- Статистика -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-credit-card text-primary"></i> MCC коды</h5>
+                    <p class="card-text">Активных маппингов: <strong>{{ mcc_stats.total_mappings }}</strong></p>
+                    <p class="card-text">Всего кодов: <strong>{{ mcc_stats.total_codes }}</strong></p>
+                    <div class="btn-group">
+                        <form method="POST" action="{{ url_for('main.populate_mcc_codes') }}" style="display: inline;">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="fas fa-plus"></i> Заполнить MCC
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('main.populate_merchant_rules') }}" style="display: inline;">
+                            <button type="submit" class="btn btn-success btn-sm">
+                                <i class="fas fa-store"></i> Заполнить мерчантов
+                            </button>
+                        </form>
+                        <a href="{{ url_for('main.mcc_codes_management') }}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-cog"></i> Управление
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-lightbulb text-warning"></i> Предложения</h5>
+                    <p class="card-text">Ожидающих рассмотрения: <strong>{{ pending_updates|length }}</strong></p>
+                    <p class="card-text">Применено: <strong>{{ applied_updates|length }}</strong></p>
+                    <form method="POST" action="{{ url_for('main.analyze_transactions') }}">
+                        <button type="submit" class="btn btn-warning btn-sm">
+                            <i class="fas fa-search"></i> Запустить анализ
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-chart-line text-success"></i> Последние MCC</h5>
+                    {% if mcc_stats.recent_additions %}
+                        <ul class="list-unstyled">
+                            {% for mcc in mcc_stats.recent_additions %}
+                            <li><small><code>{{ mcc.mcc_code }}</code> → {{ mcc.category.name }}</small></li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted"><small>Нет недавних добавлений</small></p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ожидающие предложения -->
+    {% if pending_updates %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3>Ожидающие рассмотрения предложения</h3>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Категория</th>
+                            <th>Источник</th>
+                            <th>Описание</th>
+                            <th>Уверенность</th>
+                            <th>Дата</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for update in pending_updates %}
+                        <tr>
+                            <td>
+                                <strong>{{ update.category_name }}</strong>
+                                <br><small class="text-muted">{{ update.update_type }}</small>
+                            </td>
+                            <td>
+                                <span class="badge badge-info">{{ update.source_type }}</span>
+                            </td>
+                            <td>
+                                {{ update.description }}
+                                {% if update.extra_data %}
+                                <br><small class="text-muted">
+                                    {% if update.extra_data.source_data %}
+                                        Источник: {{ update.extra_data.source_data }}
+                                    {% endif %}
+                                    {% if update.extra_data.frequency %}
+                                        ({{ update.extra_data.frequency }} раз)
+                                    {% endif %}
+                                </small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar 
+                                        {% if update.confidence_score >= 80 %}bg-success
+                                        {% elif update.confidence_score >= 60 %}bg-warning
+                                        {% else %}bg-danger{% endif %}"
+                                        role="progressbar" 
+                                        style="width: {{ update.confidence_score }}%">
+                                        {{ update.confidence_score }}%
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <small>{{ update.created_at.strftime('%d.%m.%Y %H:%M') }}</small>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <form method="POST" action="{{ url_for('main.approve_category_update', update_id=update.id) }}" style="display: inline;">
+                                        <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Одобрить это предложение?')">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('main.reject_category_update', update_id=update.id) }}" style="display: inline;">
+                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Отклонить это предложение?')">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Примененные предложения -->
+    {% if applied_updates %}
+    <div class="row">
+        <div class="col-12">
+            <h3>Недавно примененные предложения</h3>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Категория</th>
+                            <th>Источник</th>
+                            <th>Уверенность</th>
+                            <th>Применено</th>
+                            <th>Кем</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for update in applied_updates %}
+                        <tr class="table-success">
+                            <td>
+                                <strong>{{ update.category_name }}</strong>
+                                <br><small class="text-muted">{{ update.update_type }}</small>
+                            </td>
+                            <td>
+                                <span class="badge badge-success">{{ update.source_type }}</span>
+                            </td>
+                            <td>
+                                <small>{{ update.confidence_score }}%</small>
+                            </td>
+                            <td>
+                                <small>{{ update.applied_at.strftime('%d.%m.%Y %H:%M') if update.applied_at else 'N/A' }}</small>
+                            </td>
+                            <td>
+                                <small>{{ update.applied_by or 'System' }}</small>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Пустое состояние -->
+    {% if not pending_updates and not applied_updates %}
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h4>Нет предложений по обновлению категорий</h4>
+                <p>Запустите анализ транзакций, чтобы система предложила новые категории на основе ваших данных.</p>
+                <form method="POST" action="{{ url_for('main.analyze_transactions') }}">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Запустить анализ транзакций
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.progress {
+    margin-bottom: 0;
+}
+
+.card {
+    margin-bottom: 1rem;
+}
+
+.badge {
+    font-size: 0.8em;
+}
+
+.btn-group .btn {
+    margin-right: 2px;
+}
+
+.table td {
+    vertical-align: middle;
+}
+</style>
+{% endblock %}

@@ -643,6 +643,198 @@ class ImportPreviewTransaction(db.Model):
         return f'<ImportPreviewTransaction {self.amount} {self.category_name}>'
 
 
+class MCCCodeMapping(db.Model):
+    """Справочник MCC кодов для автоматической категоризации"""
+    __tablename__ = 'mcc_code_mappings'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    mcc_code = db.Column(db.String(10), nullable=False, unique=True)  # MCC код (например, "5411")
+    description = db.Column(db.String(200), nullable=False)  # Описание MCC кода
+    category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
+    subcategory = db.Column(db.String(100))  # Подкатегория для данного MCC
+    is_active = db.Column(db.Boolean, default=True)
+    confidence = db.Column(db.Integer, default=95)  # Уверенность в категоризации (0-100)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Связи
+    category = db.relationship('Category', backref='mcc_mappings')
+    
+    def __repr__(self):
+        return f'<MCCCodeMapping {self.mcc_code}: {self.description} -> {self.category.name}>'
+    
+    @staticmethod
+    def get_category_for_mcc(mcc_code):
+        """Получить категорию для MCC кода"""
+        if not mcc_code:
+            return None
+        
+        mapping = MCCCodeMapping.query.filter(
+            MCCCodeMapping.mcc_code == str(mcc_code),
+            MCCCodeMapping.is_active == True
+        ).first()
+        
+        return mapping
+    
+    @staticmethod
+    def populate_default_mcc_codes():
+        """Заполнить базовые MCC коды"""
+        from app import db
+        
+        default_mcc_codes = [
+            # Продукты
+            ('5411', 'Grocery Stores, Supermarkets', 'Продукты'),
+            ('5451', 'Dairy Products Stores', 'Продукты'),
+            ('5422', 'Freezer and Meat Lockers', 'Продукты'),
+            
+            # Рестораны и кафе
+            ('5812', 'Eating Places, Restaurants', 'Рестораны и кафе'),
+            ('5814', 'Fast Food Restaurants', 'Рестораны и кафе'),
+            ('5813', 'Bars, Cocktail Lounges, Discotheques', 'Рестораны и кафе'),
+            
+            # Транспорт
+            ('5541', 'Service Stations (with or without Ancillary Services)', 'Транспорт'),
+            ('5542', 'Automated Fuel Dispensers', 'Транспорт'),
+            ('4121', 'Taxicabs and Limousines', 'Транспорт'),
+            ('4111', 'Transportation-Suburban and Local Commuter Passenger', 'Транспорт'),
+            
+            # Здоровье и медицина
+            ('5912', 'Drug Stores and Pharmacies', 'Здоровье и медицина'),
+            ('8011', 'Doctors', 'Здоровье и медицина'),
+            ('8021', 'Dentists and Orthodontists', 'Здоровье и медицина'),
+            ('8099', 'Health and Medical Services', 'Здоровье и медицина'),
+            
+            # Одежда и обувь
+            ('5611', 'Men\'s and Boy\'s Clothing and Accessory Stores', 'Одежда и обувь'),
+            ('5621', 'Women\'s Ready-to-Wear Stores', 'Одежда и обувь'),
+            ('5661', 'Shoe Stores', 'Одежда и обувь'),
+            ('5651', 'Family Clothing Stores', 'Одежда и обувь'),
+            
+            # Развлечения
+            ('5816', 'Digital Goods - Games', 'Развлечения'),
+            ('7832', 'Motion Picture Theaters', 'Развлечения'),
+            ('7941', 'Commercial Sports, Professional Sports Clubs, Athletic Fields', 'Развлечения'),
+            
+            # Коммунальные услуги
+            ('4900', 'Utilities - Electric, Gas, Sanitary and Water', 'Коммунальные услуги'),
+            ('4814', 'Telecommunication Services', 'Коммунальные услуги'),
+            ('4816', 'Computer Network/Information Services', 'Коммунальные услуги'),
+            
+            # Банки и финансы
+            ('6011', 'Automated Teller Machines', 'Банки и финансы'),
+            ('6010', 'Financial Institutions - Manual Cash Disbursements', 'Банки и финансы'),
+            ('6012', 'Financial Institutions - Merchandise and Services', 'Банки и финансы'),
+        ]
+        
+        for mcc_code, description, category_name in default_mcc_codes:
+            # Проверяем, существует ли уже такой MCC код
+            existing = MCCCodeMapping.query.filter_by(mcc_code=mcc_code).first()
+            if existing:
+                continue
+            
+            # Ищем категорию расходов
+            category = Category.query.filter(
+                Category.name == category_name,
+                Category.category_type == 'expense'
+            ).first()
+            
+            if not category:
+                # Создаем новую категорию если не существует
+                category = Category(
+                    name=category_name,
+                    category_type='expense',
+                    color='#6c757d'  # Серый цвет по умолчанию
+                )
+                db.session.add(category)
+                db.session.flush()
+            
+            # Создаем маппинг MCC
+            mcc_mapping = MCCCodeMapping(
+                mcc_code=mcc_code,
+                description=description,
+                category_id=category.id,
+                confidence=90
+            )
+            db.session.add(mcc_mapping)
+        
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error populating MCC codes: {e}")
+
+
+class CategoryAutoUpdate(db.Model):
+    """Модель для автоматического обновления категорий"""
+    __tablename__ = 'category_auto_updates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    source_type = db.Column(db.String(50), nullable=False)  # 'mcc_codes', 'merchant_patterns', 'transaction_analysis'
+    update_type = db.Column(db.String(50), nullable=False)  # 'new_category', 'new_mapping', 'suggestion'
+    category_name = db.Column(db.String(100))  # Предлагаемое имя категории
+    description = db.Column(db.Text)  # Описание обновления
+    confidence_score = db.Column(db.Integer, default=0)  # Уровень уверенности (0-100)
+    status = db.Column(db.String(20), default='pending')  # 'pending', 'approved', 'rejected', 'applied'
+    extra_data = db.Column(db.JSON)  # Дополнительная информация
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    applied_at = db.Column(db.DateTime)
+    applied_by = db.Column(db.String(100))
+    
+    def __repr__(self):
+        return f'<CategoryAutoUpdate {self.update_type}: {self.category_name}>'
+    
+    @staticmethod
+    def suggest_new_categories():
+        """Предложить новые категории на основе анализа транзакций"""
+        from app import db
+        from collections import Counter
+        
+        # Анализируем описания транзакций без категорий
+        transactions = Transaction.query.join(Category).filter(
+            Category.name == 'Прочее'  # Предполагаем, что есть категория "Прочее"
+        ).limit(1000).all()
+        
+        descriptions = [t.description for t in transactions if t.description]
+        
+        # Анализируем частые слова в описаниях
+        words = []
+        for desc in descriptions:
+            # Простой анализ слов (можно улучшить с помощью NLP)
+            clean_words = [w.lower() for w in desc.split() if len(w) > 3]
+            words.extend(clean_words)
+        
+        word_counts = Counter(words)
+        
+        # Предлагаем категории на основе частых слов
+        for word, count in word_counts.most_common(10):
+            if count < 5:  # Минимальное количество вхождений
+                continue
+            
+            # Проверяем, нет ли уже такого предложения
+            existing = CategoryAutoUpdate.query.filter(
+                CategoryAutoUpdate.category_name.ilike(f'%{word}%'),
+                CategoryAutoUpdate.status == 'pending'
+            ).first()
+            
+            if existing:
+                continue
+            
+            suggestion = CategoryAutoUpdate(
+                source_type='transaction_analysis',
+                update_type='new_category',
+                category_name=word.capitalize(),
+                description=f'Предлагается новая категория на основе анализа {count} транзакций',
+                confidence_score=min(100, count * 10),
+                metadata={'word': word, 'count': count}
+            )
+            db.session.add(suggestion)
+        
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+
 class MerchantRule(db.Model):
     """Правила категоризации мерчантов"""
     __tablename__ = 'merchant_rules'

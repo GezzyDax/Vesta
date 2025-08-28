@@ -1,21 +1,16 @@
 {% extends "base.html" %}
 
-{% block title %}Дашборд - FamilyBudget{% endblock %}
+{% block title %}{{ _("Dashboard") }} - Vesta{% endblock %}
+{% block page_title %}{{ _("Dashboard") }}{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        <h1><i class="bi bi-speedometer2"></i> Семейный бюджет</h1>
-        <p class="text-muted">Обзор финансов за {{ current_month }}/{{ current_year }}</p>
-    </div>
-</div>
 
 <!-- Общая статистика -->
 <div class="row mb-4">
     <div class="col-md-3">
         <div class="card text-center">
             <div class="card-body">
-                <h5 class="card-title text-success"><i class="bi bi-arrow-up-circle"></i> Доходы</h5>
+                <h5 class="card-title text-success"><i class="bi bi-arrow-up-circle"></i> {{ _("Income") }}</h5>
                 <p class="card-text card-balance balance-positive">
                     {{ "{:,.2f}".format(monthly_stats.total_income).replace(',', ' ') }} ₽
                 </p>
@@ -25,7 +20,7 @@
     <div class="col-md-3">
         <div class="card text-center">
             <div class="card-body">
-                <h5 class="card-title text-danger"><i class="bi bi-arrow-down-circle"></i> Расходы</h5>
+                <h5 class="card-title text-danger"><i class="bi bi-arrow-down-circle"></i> {{ _("Expenses") }}</h5>
                 <p class="card-text card-balance balance-negative">
                     {{ "{:,.2f}".format(monthly_stats.total_expense).replace(',', ' ') }} ₽
                 </p>
@@ -35,7 +30,7 @@
     <div class="col-md-3">
         <div class="card text-center">
             <div class="card-body">
-                <h5 class="card-title text-primary"><i class="bi bi-arrow-left-right"></i> Переводы</h5>
+                <h5 class="card-title text-primary"><i class="bi bi-arrow-left-right"></i> {{ _("Transfers") }}</h5>
                 <p class="card-text card-balance text-primary">
                     {{ "{:,.2f}".format(monthly_stats.total_transfers).replace(',', ' ') }} ₽
                 </p>
@@ -45,7 +40,7 @@
     <div class="col-md-3">
         <div class="card text-center">
             <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-wallet2"></i> Общий баланс</h5>
+                <h5 class="card-title"><i class="bi bi-wallet2"></i> {{ _("Total Balance") }}</h5>
                 <p class="card-text card-balance {% if total_family_balance >= 0 %}balance-positive{% else %}balance-negative{% endif %}">
                     {{ "{:,.2f}".format(total_family_balance).replace(',', ' ') }} ₽
                 </p>
@@ -68,9 +63,9 @@
                         <table class="table table-sm">
                             <thead>
                                 <tr>
-                                    <th>Счет</th>
-                                    <th>Тип</th>
-                                    <th class="text-end">Баланс</th>
+                                    <th>{{ _("Account") }}</th>
+                                    <th>{{ _("Type") }}</th>
+                                    <th class="text-end">{{ _("Balance") }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -84,7 +79,7 @@
                                 </tr>
                                 {% endfor %}
                                 <tr class="table-light">
-                                    <td colspan="2"><strong>Итого:</strong></td>
+                                    <td colspan="2"><strong>{{ _("Total:") }}</strong></td>
                                     <td class="text-end {% if user.get_total_balance() >= 0 %}balance-positive{% else %}balance-negative{% endif %}">
                                         <strong>{{ "{:,.2f}".format(user.get_total_balance()).replace(',', ' ') }} ₽</strong>
                                     </td>
@@ -93,9 +88,9 @@
                         </table>
                     </div>
                 {% else %}
-                    <p class="text-muted">Нет добавленных счетов</p>
+                    <p class="text-muted">{{ _("No accounts added") }}</p>
                     <a href="{{ url_for('main.accounts') }}" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-plus-circle"></i> Добавить счет
+                        <i class="bi bi-plus-circle"></i> {{ _("Add account") }}
                     </a>
                 {% endif %}
             </div>
@@ -109,9 +104,9 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5><i class="bi bi-clock-history"></i> Последние транзакции</h5>
+                <h5><i class="bi bi-clock-history"></i> {{ _("Recent Transactions") }}</h5>
                 <a href="{{ url_for('main.transactions') }}" class="btn btn-outline-primary btn-sm">
-                    Все транзакции <i class="bi bi-arrow-right"></i>
+                    {{ _("All transactions") }} <i class="bi bi-arrow-right"></i>
                 </a>
             </div>
             <div class="card-body">
@@ -120,12 +115,12 @@
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Дата</th>
-                                    <th>Тип</th>
-                                    <th>Счета</th>
-                                    <th>Сумма</th>
-                                    <th>Категория</th>
-                                    <th>Описание</th>
+                                    <th>{{ _("Date") }}</th>
+                                    <th>{{ _("Type") }}</th>
+                                    <th>{{ _("Accounts") }}</th>
+                                    <th>{{ _("Amount") }}</th>
+                                    <th>{{ _("Category") }}</th>
+                                    <th>{{ _("Description") }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -149,10 +144,10 @@
                         </table>
                     </div>
                 {% else %}
-                    <p class="text-muted text-center py-4">Нет транзакций</p>
+                    <p class="text-muted text-center py-4">{{ _("No transactions") }}</p>
                     <div class="text-center">
                         <a href="{{ url_for('main.add_transaction') }}" class="btn btn-primary">
-                            <i class="bi bi-plus-circle"></i> Добавить первую транзакцию
+                            <i class="bi bi-plus-circle"></i> {{ _("Add first transaction") }}
                         </a>
                     </div>
                 {% endif %}
@@ -166,23 +161,23 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <h6><i class="bi bi-lightning"></i> Быстрые действия</h6>
+                <h6><i class="bi bi-lightning"></i> {{ _("Quick Actions") }}</h6>
             </div>
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-4 mb-2">
                         <a href="{{ url_for('main.add_transaction') }}?type=income" class="btn btn-success w-100">
-                            <i class="bi bi-plus-circle"></i> Добавить доход
+                            <i class="bi bi-plus-circle"></i> {{ _("Add income") }}
                         </a>
                     </div>
                     <div class="col-md-4 mb-2">
                         <a href="{{ url_for('main.add_transaction') }}?type=expense" class="btn btn-danger w-100">
-                            <i class="bi bi-dash-circle"></i> Добавить расход
+                            <i class="bi bi-dash-circle"></i> {{ _("Add expense") }}
                         </a>
                     </div>
                     <div class="col-md-4 mb-2">
                         <a href="{{ url_for('main.add_transaction') }}?type=transfer" class="btn btn-primary w-100">
-                            <i class="bi bi-arrow-left-right"></i> Перевод между счетами
+                            <i class="bi bi-arrow-left-right"></i> {{ _("Transfer between accounts") }}
                         </a>
                     </div>
                 </div>
