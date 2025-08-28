@@ -76,6 +76,29 @@
                             <textarea name="description" class="form-control" rows="3" placeholder="Необязательное описание транзакции"></textarea>
                         </div>
 
+                        <!-- Дополнительные поля для переводов -->
+                        <div id="transferFields" style="display: none;">
+                            <!-- Номер телефона для СБП -->
+                            <div class="col-md-6">
+                                <label class="form-label">Номер телефона получателя (СБП)</label>
+                                <input type="tel" name="contact_phone" class="form-control" placeholder="+7 (XXX) XXX-XX-XX">
+                                <small class="form-text text-muted">Для автоматического создания встречной транзакции</small>
+                            </div>
+                            
+                            <!-- Подкатегория -->
+                            <div class="col-md-6">
+                                <label class="form-label">Подкатегория</label>
+                                <input type="text" name="subcategory" class="form-control" placeholder="Например: Подарок, Долг">
+                            </div>
+                            
+                            <!-- Референс -->
+                            <div class="col-12">
+                                <label class="form-label">Референс операции</label>
+                                <input type="text" name="reference" class="form-control" placeholder="Идентификатор операции из банка">
+                                <small class="form-text text-muted">Для связи с банковскими операциями</small>
+                            </div>
+                        </div>
+
                         <!-- Кнопки -->
                         <div class="col-12">
                             <button type="submit" class="btn btn-primary">
@@ -161,6 +184,14 @@ $(document).ready(function() {
         const toGroup = $('#toAccountGroup');
         const fromSelect = $('#fromAccountSelect');
         const toSelect = $('#toAccountSelect');
+        const transferFields = $('#transferFields');
+
+        // Показать/скрыть дополнительные поля для переводов
+        if (type === 'transfer') {
+            transferFields.show();
+        } else {
+            transferFields.hide();
+        }
 
         // Очистка селектов счетов
         fromSelect.html('<option value="">Выберите счет</option>');

@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Добавить категорию{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="bi bi-tag"></i> Добавить новую категорию</h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">Главная</a></li>
+                            <li class="breadcrumb-item"><a href="{{ url_for('main.categories') }}">Категории</a></li>
+                            <li class="breadcrumb-item active">Добавить</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div>
+                    <a href="{{ url_for('main.categories') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Назад к категориям
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-plus-circle"></i> Создание категории
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <!-- Название категории -->
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Название <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   required maxlength="100" placeholder="Например: Продукты питания"
+                                   value="{{ request.form.get('name', '') }}">
+                            <div class="form-text">Краткое, понятное название категории</div>
+                        </div>
+
+                        <!-- Тип категории -->
+                        <div class="mb-3">
+                            <label for="category_type" class="form-label">Тип категории <span class="text-danger">*</span></label>
+                            <select class="form-select" id="category_type" name="category_type" required>
+                                <option value="">Выберите тип</option>
+                                <option value="income" {% if request.form.get('category_type') == 'income' or request.args.get('type') == 'income' %}selected{% endif %}>
+                                    💰 Доход
+                                </option>
+                                <option value="expense" {% if request.form.get('category_type') == 'expense' or request.args.get('type') == 'expense' %}selected{% endif %}>
+                                    💸 Расход
+                                </option>
+                                <option value="transfer" {% if request.form.get('category_type') == 'transfer' or request.args.get('type') == 'transfer' %}selected{% endif %}>
+                                    🔄 Перевод
+                                </option>
+                            </select>
+                            <div class="form-text">Определяет, как будет использоваться категория</div>
+                        </div>
+
+                        <!-- Описание -->
+                        <div class="mb-4">
+                            <label for="description" class="form-label">Описание</label>
+                            <textarea class="form-control" id="description" name="description" rows="3" 
+                                      maxlength="255" placeholder="Подробное описание категории...">{{ request.form.get('description', '') }}</textarea>
+                            <div class="form-text">Дополнительная информация о назначении категории (необязательно)</div>
+                        </div>
+
+                        <!-- Примеры категорий -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <h6 class="alert-heading">💡 Примеры популярных категорий:</h6>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <strong>💰 Доходы:</strong><br>
+                                            <small class="text-muted">
+                                                • Зарплата<br>
+                                                • Фриланс<br>
+                                                • Дивиденды<br>
+                                                • Подарки
+                                            </small>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>💸 Расходы:</strong><br>
+                                            <small class="text-muted">
+                                                • Продукты<br>
+                                                • Транспорт<br>
+                                                • Коммунальные<br>
+                                                • Развлечения
+                                            </small>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>🔄 Переводы:</strong><br>
+                                            <small class="text-muted">
+                                                • СБП переводы<br>
+                                                • Пополнение карт<br>
+                                                • Снятие наличных<br>
+                                                • Инвестиции
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Кнопки управления -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Создать категорию
+                            </button>
+                            <a href="{{ url_for('main.categories') }}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Отмена
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Автофокус на поле названия
+document.getElementById('name').focus();
+
+// Обновление примеров при изменении типа категории
+document.getElementById('category_type').addEventListener('change', function() {
+    const examples = {
+        'income': ['Зарплата', 'Фриланс', 'Дивиденды', 'Подарки', 'Бонусы'],
+        'expense': ['Продукты', 'Транспорт', 'Коммунальные', 'Развлечения', 'Одежда'],
+        'transfer': ['СБП переводы', 'Пополнение карт', 'Снятие наличных', 'Инвестиции', 'Сбережения']
+    };
+    
+    if (this.value && !document.getElementById('name').value) {
+        // Можно добавить автозаполнение или подсказки
+    }
+});
+
+// Валидация формы
+document.querySelector('form').addEventListener('submit', function(e) {
+    const name = document.getElementById('name').value.trim();
+    const categoryType = document.getElementById('category_type').value;
+    
+    if (!name) {
+        e.preventDefault();
+        document.getElementById('name').focus();
+        alert('Введите название категории');
+        return;
+    }
+    
+    if (!categoryType) {
+        e.preventDefault();
+        document.getElementById('category_type').focus();
+        alert('Выберите тип категории');
+        return;
+    }
+    
+    if (name.length < 2) {
+        e.preventDefault();
+        document.getElementById('name').focus();
+        alert('Название должно содержать минимум 2 символа');
+        return;
+    }
+});
+
+// Генерация описания на основе названия и типа
+document.getElementById('name').addEventListener('blur', function() {
+    const name = this.value.trim();
+    const categoryType = document.getElementById('category_type').value;
+    const description = document.getElementById('description');
+    
+    if (name && categoryType && !description.value) {
+        let autoDescription = '';
+        switch(categoryType) {
+            case 'income':
+                autoDescription = `Доходы от: ${name.toLowerCase()}`;
+                break;
+            case 'expense':
+                autoDescription = `Расходы на: ${name.toLowerCase()}`;
+                break;
+            case 'transfer':
+                autoDescription = `Переводы: ${name.toLowerCase()}`;
+                break;
+        }
+        description.placeholder = autoDescription;
+    }
+});
+</script>
+{% endblock %}

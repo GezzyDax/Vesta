@@ -8,11 +8,20 @@ class User(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)  # Муж/Жена
+    phone_numbers = db.Column(db.JSON, default=list)  # Список номеров телефонов для СБП
+    default_sbp_account_id = db.Column(db.Integer, nullable=True)  # Банк по умолчанию для СБП
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Связи
-    accounts = db.relationship('Account', backref='owner', lazy='dynamic')
+    # Связи  
+    accounts = db.relationship('Account', primaryjoin='User.id == Account.user_id', lazy='dynamic')
+    
+    @property
+    def default_sbp_account(self):
+        """Счет по умолчанию для СБП переводов"""
+        if self.default_sbp_account_id:
+            return Account.query.get(self.default_sbp_account_id)
+        return None
     
     def __repr__(self):
         return f'<User {self.name}>'
@@ -25,6 +34,86 @@ class User(db.Model):
     def get_total_balance_with_credit(self):
         """Общий баланс включая кредитки"""
         return sum(account.balance for account in self.accounts if account.is_active)
+    
+    def add_phone_number(self, phone):
+        """Добавить номер телефона к пользователю"""
+        normalized = Contact.normalize_phone(phone)
+        if normalized and normalized not in (self.phone_numbers or []):
+            phone_list = self.phone_numbers or []
+            phone_list.append(normalized)
+            self.phone_numbers = phone_list
+            
+            # Автоматически создаем контакт для этого пользователя
+            self._create_user_contact(normalized)
+            
+            return True
+        return False
+    
+    def remove_phone_number(self, phone):
+        """Удалить номер телефона"""
+        normalized = Contact.normalize_phone(phone)
+        if normalized and self.phone_numbers and normalized in self.phone_numbers:
+            phone_list = self.phone_numbers.copy()
+            phone_list.remove(normalized)
+            self.phone_numbers = phone_list
+            return True
+        return False
+    
+    @staticmethod
+    def find_by_phone(phone):
+        """Найти пользователя по номеру телефона"""
+        normalized = Contact.normalize_phone(phone)
+        if not normalized:
+            return None
+        
+        users = User.query.filter(User.phone_numbers.isnot(None)).all()
+        for user in users:
+            if user.phone_numbers:
+                # Нормализуем все номера пользователя и ищем совпадение
+                user_normalized_phones = [Contact.normalize_phone(p) for p in user.phone_numbers]
+                if normalized in user_normalized_phones:
+                    return user
+        return None
+    
+    @staticmethod
+    def sync_user_contacts():
+        """Синхронизировать контакты для всех пользователей"""
+        from app import db
+        
+        users = User.query.filter(User.phone_numbers.isnot(None)).all()
+        for user in users:
+            if user.phone_numbers:
+                for phone in user.phone_numbers:
+                    normalized = Contact.normalize_phone(phone)
+                    if normalized:
+                        user._create_user_contact(normalized)
+        
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error syncing user contacts: {e}")
+    
+    def _create_user_contact(self, normalized_phone):
+        """Создать контакт для пользователя (приватный метод)"""
+        from app import db  # Импорт для избежания циклических импортов
+        
+        # Проверяем, существует ли уже контакт с таким номером
+        existing_contact = Contact.get_by_phone(normalized_phone)
+        if not existing_contact:
+            # Создаем новый контакт
+            contact = Contact(
+                name=self.name,
+                phone=normalized_phone,
+                is_user_contact=True  # Флаг, что это контакт пользователя системы
+            )
+            db.session.add(contact)
+            try:
+                db.session.flush()  # Сохраняем в рамках текущей транзакции
+            except Exception:
+                db.session.rollback()
+                # Если не удалось создать контакт, продолжаем без ошибки
+                pass
 
 class Account(db.Model):
     """Модель банковского счета/карты"""
@@ -42,6 +131,7 @@ class Account(db.Model):
     
     # Связи
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    owner = db.relationship('User', primaryjoin='Account.user_id == User.id')
     
     def __repr__(self):
         return f'<Account {self.name}: {self.balance} {self.currency}>'
@@ -109,6 +199,7 @@ class Transaction(db.Model):
     transaction_type = db.Column(db.String(20), nullable=False)  # income, expense, transfer
     contact_phone = db.Column(db.String(20))  # Номер телефона для СБП переводов
     reference = db.Column(db.String(100))  # Ссылка на банковскую операцию
+    linked_transaction_id = db.Column(db.Integer, db.ForeignKey('transactions.id'), nullable=True)  # Связанная транзакция для СБП переводов
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Связи
@@ -118,8 +209,9 @@ class Transaction(db.Model):
     
     # Relationships
     category = db.relationship('Category', backref='transactions')
-    from_account = db.relationship('Account', foreign_keys=[from_account_id], backref='outgoing_transactions')
-    to_account = db.relationship('Account', foreign_keys=[to_account_id], backref='incoming_transactions')
+    from_account = db.relationship('Account', foreign_keys=[from_account_id])
+    to_account = db.relationship('Account', foreign_keys=[to_account_id])
+    linked_transaction = db.relationship('Transaction', remote_side=[id], post_update=True)
     
     
     def __repr__(self):
@@ -136,9 +228,21 @@ class Transaction(db.Model):
     
     def get_contact(self):
         """Получить связанный контакт по номеру телефона"""
-        if self.contact_phone and self.transaction_type in ['transfer', 'income']:
+        if self.contact_phone and self.transaction_type in ['transfer', 'income', 'expense']:
             return Contact.get_by_phone(self.contact_phone)
         return None
+    
+    def get_contact_display_name(self):
+        """Получить имя контакта для отображения"""
+        if not self.contact_phone:
+            return None
+        
+        contact = self.get_contact()
+        if contact:
+            return contact.name
+        
+        # Если контакт не найден, возвращаем сам номер телефона
+        return self.contact_phone
     
     def get_account_display(self):
         """Отображение счетов для транзакции"""
@@ -181,6 +285,53 @@ class Transaction(db.Model):
                 stats['total_transfers'] += float(transaction.amount)
         
         return stats
+    
+    @staticmethod
+    def create_contact_from_phone(phone):
+        """Автоматически создать контакт из номера телефона если его еще нет"""
+        if not phone:
+            return None
+            
+        from app import db
+        
+        # Нормализуем номер
+        normalized_phone = Contact.normalize_phone(phone)
+        if not normalized_phone:
+            return None
+        
+        # Проверяем, существует ли уже контакт
+        existing_contact = Contact.get_by_phone(normalized_phone)
+        if existing_contact:
+            return existing_contact
+        
+        # Проверяем, есть ли пользователь с таким номером
+        linked_user = User.find_by_phone(normalized_phone)
+        
+        # Создаем новый контакт
+        if linked_user:
+            # Контакт пользователя системы
+            contact = Contact(
+                name=linked_user.name,
+                phone=normalized_phone,
+                is_user_contact=True,
+                description=f"Автоматически создано из пользователя системы"
+            )
+        else:
+            # Обычный контакт из транзакции
+            contact = Contact(
+                name=f"Контакт {normalized_phone[-4:]}",  # Последние 4 цифры
+                phone=normalized_phone,
+                is_user_contact=False,
+                description="Автоматически создано из транзакции"
+            )
+        
+        try:
+            db.session.add(contact)
+            db.session.flush()
+            return contact
+        except Exception:
+            db.session.rollback()
+            return None
 
 
 class Contact(db.Model):
@@ -191,6 +342,7 @@ class Contact(db.Model):
     name = db.Column(db.String(100), nullable=False)
     phone = db.Column(db.String(20), nullable=False, unique=True)
     description = db.Column(db.Text)  # Дополнительная информация
+    is_user_contact = db.Column(db.Boolean, default=False)  # Флаг контакта пользователя системы
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -233,7 +385,111 @@ class Contact(db.Model):
     
     def get_related_transactions(self):
         """Получить связанные СБП переводы"""
-        return Transaction.query.filter_by(contact_phone=self.phone).order_by(desc(Transaction.date)).all()
+        # Нормализуем номер контакта
+        normalized_contact_phone = Contact.normalize_phone(self.phone)
+        if not normalized_contact_phone:
+            return []
+        
+        # Ищем транзакции по всем возможным форматам номера
+        possible_phones = [
+            self.phone,  # Исходный формат
+            normalized_contact_phone,  # Нормализованный формат (7XXXXXXXXXX)
+            f"+{normalized_contact_phone}",  # +7XXXXXXXXXX
+            f"+7{normalized_contact_phone[-10:]}",  # +7 + последние 10 цифр
+            f"8{normalized_contact_phone[-10:]}",  # 8 + последние 10 цифр
+        ]
+        
+        # Убираем дубликаты
+        possible_phones = list(set(possible_phones))
+        
+        # Ищем транзакции по любому из возможных форматов
+        transactions = Transaction.query.filter(
+            Transaction.contact_phone.in_(possible_phones)
+        ).order_by(desc(Transaction.date)).all()
+        
+        return transactions
+    
+    def get_statistics(self, period='all'):
+        """Получить статистику по контакту за определенный период
+        
+        Args:
+            period (str): 'all', 'week', 'month', 'year'
+        """
+        from datetime import datetime, timedelta
+        
+        try:
+            transactions = self.get_related_transactions()
+        except Exception:
+            transactions = []
+        
+        # Фильтруем транзакции по периоду
+        if period != 'all' and transactions:
+            now = datetime.now().date()
+            if period == 'week':
+                start_date = now - timedelta(days=7)
+            elif period == 'month':
+                start_date = now - timedelta(days=30)
+            elif period == 'year':
+                start_date = now - timedelta(days=365)
+            else:
+                start_date = None
+            
+            if start_date:
+                transactions = [t for t in transactions if t.date >= start_date]
+        
+        stats = {
+            'total_transactions': len(transactions) if transactions else 0,
+            'incoming_count': 0,  # Входящие переводы
+            'outgoing_count': 0,  # Исходящие переводы
+            'incoming_amount': 0.0, # Сумма входящих
+            'outgoing_amount': 0.0, # Сумма исходящих
+            'last_transaction_date': None,
+            'first_transaction_date': None,
+            'period': period
+        }
+        
+        if not transactions:
+            return stats
+        
+        # Анализируем транзакции
+        for transaction in transactions:
+            if transaction.transaction_type == 'income':
+                # Доход - деньги пришли от этого контакта
+                stats['incoming_count'] += 1
+                stats['incoming_amount'] += float(transaction.amount)
+            elif transaction.transaction_type == 'transfer':
+                # Перевод - деньги ушли к этому контакту
+                stats['outgoing_count'] += 1
+                stats['outgoing_amount'] += float(transaction.amount)
+            elif transaction.transaction_type == 'expense' and transaction.contact_phone:
+                # Расход с номером телефона - это тоже исходящий перевод (СБП)
+                stats['outgoing_count'] += 1
+                stats['outgoing_amount'] += float(transaction.amount)
+        
+        # Даты первой и последней транзакции
+        if transactions:
+            stats['last_transaction_date'] = transactions[0].date  # уже отсортированы по убыванию
+            stats['first_transaction_date'] = transactions[-1].date
+        
+        return stats
+    
+    def can_be_deleted(self):
+        """Можно ли удалить этот контакт"""
+        # Если это контакт пользователя системы, его нельзя удалить
+        if self.is_user_contact:
+            return False
+        
+        # Если есть связанные транзакции, его нельзя удалить
+        if self.get_related_transactions():
+            return False
+        
+        return True
+    
+    def get_linked_user(self):
+        """Получить связанного пользователя системы, если контакт принадлежит пользователю"""
+        if self.is_user_contact:
+            return User.find_by_phone(self.phone)
+        return None
 
 
 class UserProfile(db.Model):
@@ -335,7 +591,7 @@ class AccountSnapshot(db.Model):
     balance_change = db.Column(db.Numeric(15, 2), nullable=False)
     
     # Связи
-    account = db.relationship('Account', backref='balance_snapshots')
+    account = db.relationship('Account', foreign_keys=[account_id])
     
     def __repr__(self):
         return f'<AccountSnapshot {self.account_id}: {self.balance_before} -> {self.balance_after}>'
@@ -356,7 +612,7 @@ class ImportPreview(db.Model):
     expires_at = db.Column(db.DateTime, nullable=False)  # Время истечения превью
     
     # Связи
-    default_account = db.relationship('Account')
+    default_account = db.relationship('Account', foreign_keys=[default_account_id])
     preview_transactions = db.relationship('ImportPreviewTransaction', backref='preview', lazy='dynamic', cascade='all, delete-orphan')
     
     def __repr__(self):

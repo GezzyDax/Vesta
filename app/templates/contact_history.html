@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}История транзакций - {{ contact.name }} - Vesta{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1><i class="bi bi-clock-history"></i> История транзакций</h1>
+        <p class="text-muted">
+            <strong>{{ contact.name }}</strong> ({{ contact.phone }})
+            {% if contact.is_user_contact %}
+                <small class="badge bg-info ms-2">Пользователь системы</small>
+            {% endif %}
+        </p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('main.contacts') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Назад к контактам
+        </a>
+    </div>
+</div>
+
+<!-- Фильтр по времени -->
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h6 class="card-title mb-0"><i class="bi bi-funnel"></i> Фильтр по времени</h6>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="btn-group" role="group" aria-label="Период времени">
+                            <a href="{{ url_for('main.contact_history', contact_id=contact.id, period='all') }}" 
+                               class="btn {{ 'btn-primary' if period == 'all' else 'btn-outline-primary' }} btn-sm">
+                                Все время
+                            </a>
+                            <a href="{{ url_for('main.contact_history', contact_id=contact.id, period='week') }}" 
+                               class="btn {{ 'btn-primary' if period == 'week' else 'btn-outline-primary' }} btn-sm">
+                                Неделя
+                            </a>
+                            <a href="{{ url_for('main.contact_history', contact_id=contact.id, period='month') }}" 
+                               class="btn {{ 'btn-primary' if period == 'month' else 'btn-outline-primary' }} btn-sm">
+                                Месяц
+                            </a>
+                            <a href="{{ url_for('main.contact_history', contact_id=contact.id, period='year') }}" 
+                               class="btn {{ 'btn-primary' if period == 'year' else 'btn-outline-primary' }} btn-sm">
+                                Год
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Статистика -->
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-graph-up"></i> Статистика 
+                    {% if period != 'all' %}
+                        за {{ {'week': 'неделю', 'month': 'месяц', 'year': 'год'}[period] }}
+                    {% endif %}
+                </h6>
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h5 class="text-primary">{{ stats.total_transactions }}</h5>
+                            <small class="text-muted">Всего операций</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h5 class="text-success">+{{ "%.0f"|format(stats.incoming_amount) }} ₽</h5>
+                            <small class="text-muted">Получено ({{ stats.incoming_count }})</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h5 class="text-danger">-{{ "%.0f"|format(stats.outgoing_amount) }} ₽</h5>
+                            <small class="text-muted">Отправлено ({{ stats.outgoing_count }})</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            {% if stats.last_transaction_date %}
+                                <h5 class="text-info">{{ stats.last_transaction_date.strftime('%d.%m.%Y') }}</h5>
+                                <small class="text-muted">Последняя операция</small>
+                            {% else %}
+                                <h5 class="text-muted">-</h5>
+                                <small class="text-muted">Нет операций</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if transactions.items %}
+<!-- Таблица транзакций -->
+<div class="card">
+    <div class="card-header">
+        <h5><i class="bi bi-list-ul"></i> Транзакции ({{ transactions.total }})</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th width="100">Дата</th>
+                        <th>Тип</th>
+                        <th width="120">Сумма</th>
+                        <th>Описание</th>
+                        <th>Счета</th>
+                        <th>Категория</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions.items %}
+                    <tr>
+                        <td>
+                            <span class="text-nowrap">{{ transaction.date.strftime('%d.%m.%Y') }}</span>
+                        </td>
+                        <td>
+                            {% if transaction.transaction_type == 'income' %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-arrow-down"></i> Доход
+                                </span>
+                            {% elif transaction.transaction_type == 'expense' %}
+                                <span class="badge bg-danger">
+                                    <i class="bi bi-arrow-up"></i> Расход
+                                </span>
+                            {% else %}
+                                <span class="badge bg-info">
+                                    <i class="bi bi-arrow-left-right"></i> Перевод
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="fw-bold 
+                                {% if transaction.transaction_type == 'income' %}text-success{% else %}text-danger{% endif %}">
+                                {% if transaction.transaction_type == 'income' %}+{% else %}-{% endif %}{{ "%.2f"|format(transaction.amount) }} ₽
+                            </span>
+                        </td>
+                        <td>
+                            {{ transaction.description or '-' }}
+                            {% if transaction.subcategory %}
+                                <br><small class="text-muted">{{ transaction.subcategory }}</small>
+                            {% endif %}
+                            {% if transaction.contact_phone %}
+                                {% set transaction_contact = transaction.get_contact() %}
+                                {% if transaction_contact and transaction_contact.id != contact.id %}
+                                    <br><small class="text-info">
+                                        <i class="bi bi-person"></i> {{ transaction_contact.name }}
+                                    </small>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ transaction.get_account_display() }}</small>
+                        </td>
+                        <td>
+                            <span class="badge" style="background-color: {{ transaction.category.color }}; color: white;">
+                                {{ transaction.category.name }}
+                            </span>
+                            {% if transaction.category.parent %}
+                                <br><small class="text-muted">{{ transaction.category.parent.name }}</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Пагинация -->
+{% if transactions.pages > 1 %}
+<div class="d-flex justify-content-between align-items-center mt-4">
+    <div>
+        Показано {{ transactions.per_page * (transactions.page - 1) + 1 }} - 
+        {{ transactions.per_page * transactions.page if transactions.page < transactions.pages else transactions.total }} 
+        из {{ transactions.total }} транзакций
+    </div>
+    
+    <nav>
+        <ul class="pagination">
+            {% if transactions.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('main.contact_history', contact_id=contact.id, page=transactions.prev_num, period=period) }}">Предыдущая</a>
+                </li>
+            {% endif %}
+            
+            {% for page_num in transactions.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                {% if page_num %}
+                    {% if page_num != transactions.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('main.contact_history', contact_id=contact.id, page=page_num, period=period) }}">{{ page_num }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                    {% endif %}
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">…</span>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if transactions.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('main.contact_history', contact_id=contact.id, page=transactions.next_num, period=period) }}">Следующая</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
+
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <div class="mb-4">
+            <i class="bi bi-clock-history fs-1 text-muted"></i>
+        </div>
+        <h5>Транзакции не найдены</h5>
+        <p class="text-muted">
+            У контакта {{ contact.name }} нет транзакций 
+            {% if period != 'all' %}
+                за {{ {'week': 'последнюю неделю', 'month': 'последний месяц', 'year': 'последний год'}[period] }}
+            {% endif %}
+        </p>
+        {% if period != 'all' %}
+        <a href="{{ url_for('main.contact_history', contact_id=contact.id, period='all') }}" class="btn btn-outline-primary">
+            <i class="bi bi-clock"></i> Показать за все время
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

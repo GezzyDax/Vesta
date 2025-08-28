@@ -16,6 +16,50 @@
 </div>
 
 {% if contacts.items %}
+<!-- Фильтр по времени -->
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h6 class="card-title mb-0"><i class="bi bi-funnel"></i> Фильтр по времени</h6>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="btn-group" role="group" aria-label="Период времени">
+                            <input type="radio" class="btn-check" name="period" id="period-all" value="all" checked>
+                            <label class="btn btn-outline-primary btn-sm" for="period-all">Все время</label>
+                            
+                            <input type="radio" class="btn-check" name="period" id="period-week" value="week">
+                            <label class="btn btn-outline-primary btn-sm" for="period-week">Неделя</label>
+                            
+                            <input type="radio" class="btn-check" name="period" id="period-month" value="month">
+                            <label class="btn btn-outline-primary btn-sm" for="period-month">Месяц</label>
+                            
+                            <input type="radio" class="btn-check" name="period" id="period-year" value="year">
+                            <label class="btn btn-outline-primary btn-sm" for="period-year">Год</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Статистика по контактам -->
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-graph-up"></i> Сводная статистика</h6>
+                <div class="row" id="summary-stats">
+                    <!-- Статистика будет загружена через JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-header">
         <h5><i class="bi bi-list"></i> Контакты ({{ contacts.total }})</h5>
@@ -25,23 +69,43 @@
             <table class="table table-striped mb-0">
                 <thead class="table-dark">
                     <tr>
-                        <th>Имя</th>
-                        <th width="150">Телефон</th>
+                        <th>Контакт</th>
+                        <th width="200">Статистика</th>
                         <th>Описание</th>
                         <th width="120">Создан</th>
-                        <th width="100">Действия</th>
+                        <th width="140">Действия</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="contacts-table">
                     {% for contact in contacts.items %}
-                    <tr>
+                    <tr data-contact-id="{{ contact.id }}">
                         <td>
-                            <strong>{{ contact.name }}</strong>
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    {% if contact.is_user_contact %}
+                                        <i class="bi bi-person-circle text-info fs-4"></i>
+                                    {% else %}
+                                        <i class="bi bi-person text-secondary fs-4"></i>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <strong>{{ contact.name }}</strong>
+                                    <br>
+                                    <span class="text-primary">
+                                        <i class="bi bi-phone"></i> {{ contact.phone }}
+                                    </span>
+                                    {% if contact.is_user_contact %}
+                                        <br><small class="badge bg-info">Пользователь системы</small>
+                                    {% endif %}
+                                </div>
+                            </div>
                         </td>
-                        <td>
-                            <span class="text-primary">
-                                <i class="bi bi-phone"></i> {{ contact.phone }}
-                            </span>
+                        <td class="contact-stats" data-phone="{{ contact.phone }}">
+                            <div class="d-flex justify-content-center">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                    <span class="visually-hidden">Загрузка...</span>
+                                </div>
+                            </div>
                         </td>
                         <td>
                             {{ contact.description or '<small class="text-muted">-</small>' | safe }}
@@ -50,15 +114,20 @@
                             <small class="text-muted">{{ contact.created_at.strftime('%d.%m.%Y') }}</small>
                         </td>
                         <td>
-                            <div class="btn-group" role="group" aria-label="Действия">
+                            <div class="btn-group-vertical d-grid gap-1" role="group">
+                                <a href="/contacts/{{ contact.id }}/history" class="btn btn-outline-info btn-sm">
+                                    <i class="bi bi-clock-history"></i> История
+                                </a>
                                 <a href="{{ url_for('main.edit_contact', contact_id=contact.id) }}" 
                                    class="btn btn-outline-primary btn-sm">
-                                    <i class="bi bi-pencil"></i>
+                                    <i class="bi bi-pencil"></i> Изменить
                                 </a>
+                                {% if not contact.is_user_contact %}
                                 <button type="button" class="btn btn-outline-danger btn-sm" 
                                         onclick="confirmDelete({{ contact.id }}, '{{ contact.name }}')">
-                                    <i class="bi bi-trash"></i>
+                                    <i class="bi bi-trash"></i> Удалить
                                 </button>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
@@ -160,6 +229,8 @@
 
 {% block scripts %}
 <script>
+let currentPeriod = 'all';
+
 function confirmDelete(contactId, contactName) {
     document.getElementById('contactName').textContent = contactName;
     document.getElementById('deleteForm').action = `/contacts/${contactId}/delete`;
@@ -167,5 +238,132 @@ function confirmDelete(contactId, contactName) {
     const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
     deleteModal.show();
 }
+
+function loadContactStatistics(period = 'all') {
+    currentPeriod = period;
+    
+    // Загружаем сводную статистику
+    loadSummaryStats(period);
+    
+    // Загружаем статистику для каждого контакта
+    document.querySelectorAll('.contact-stats').forEach(cell => {
+        const phone = cell.dataset.phone;
+        cell.innerHTML = `
+            <div class="d-flex justify-content-center">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Загрузка...</span>
+                </div>
+            </div>
+        `;
+        
+        fetch(`/api/contacts/stats?phone=${encodeURIComponent(phone)}&period=${period}`)
+            .then(response => response.json())
+            .then(stats => {
+                if (stats.total_transactions > 0) {
+                    cell.innerHTML = `
+                        <div class="text-center">
+                            <div class="row g-1">
+                                <div class="col-6">
+                                    <small class="text-success d-block">
+                                        <i class="bi bi-arrow-down"></i> +${Math.round(stats.incoming_amount)} ₽
+                                    </small>
+                                    <small class="text-muted">(${stats.incoming_count})</small>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-danger d-block">
+                                        <i class="bi bi-arrow-up"></i> -${Math.round(stats.outgoing_amount)} ₽
+                                    </small>
+                                    <small class="text-muted">(${stats.outgoing_count})</small>
+                                </div>
+                            </div>
+                            <small class="text-muted">Всего: ${stats.total_transactions}</small>
+                            ${stats.last_transaction_date ? 
+                                `<br><small class="text-muted">Последн.: ${new Date(stats.last_transaction_date).toLocaleDateString('ru-RU')}</small>` : 
+                                ''}
+                        </div>
+                    `;
+                } else {
+                    cell.innerHTML = `
+                        <div class="text-center">
+                            <small class="text-muted">Нет операций</small>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка загрузки статистики:', error);
+                cell.innerHTML = `
+                    <div class="text-center">
+                        <small class="text-danger">Ошибка загрузки</small>
+                    </div>
+                `;
+            });
+    });
+}
+
+function loadSummaryStats(period) {
+    const summaryContainer = document.getElementById('summary-stats');
+    summaryContainer.innerHTML = `
+        <div class="col-12 text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Загрузка сводной статистики...</span>
+            </div>
+        </div>
+    `;
+    
+    fetch(`/api/contacts/summary?period=${period}`)
+        .then(response => response.json())
+        .then(data => {
+            summaryContainer.innerHTML = `
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <h5 class="text-primary">${data.total_contacts}</h5>
+                        <small class="text-muted">Всего контактов</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <h5 class="text-info">${data.contacts_with_transactions}</h5>
+                        <small class="text-muted">С операциями</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <h5 class="text-success">+${Math.round(data.total_incoming)} ₽</h5>
+                        <small class="text-muted">Всего получено</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <h5 class="text-danger">-${Math.round(data.total_outgoing)} ₽</h5>
+                        <small class="text-muted">Всего отправлено</small>
+                    </div>
+                </div>
+            `;
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки сводной статистики:', error);
+            summaryContainer.innerHTML = `
+                <div class="col-12 text-center">
+                    <small class="text-danger">Ошибка загрузки сводной статистики</small>
+                </div>
+            `;
+        });
+}
+
+// Обработка переключения периодов
+document.addEventListener('DOMContentLoaded', function() {
+    // Загружаем статистику при загрузке страницы
+    loadContactStatistics('all');
+    
+    // Обработчик изменения периода
+    document.querySelectorAll('input[name="period"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.checked) {
+                loadContactStatistics(this.value);
+            }
+        });
+    });
+});
 </script>
 {% endblock %}

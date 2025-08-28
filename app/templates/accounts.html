@@ -67,8 +67,7 @@
                                             </button>
                                             <ul class="dropdown-menu">
                                                 <li>
-                                                    <a class="dropdown-item" href="#" 
-                                                       onclick="editAccount({{ account.id }}, '{{ account.name }}', '{{ account.account_type }}', {{ account.balance }})">
+                                                    <a class="dropdown-item" href="{{ url_for('main.edit_account', account_id=account.id) }}">
                                                         <i class="bi bi-pencil"></i> Редактировать
                                                     </a>
                                                 </li>
@@ -230,10 +229,6 @@ function openAddAccountModal(userId, userName) {
     modal.show();
 }
 
-function editAccount(accountId, name, type, balance) {
-    // Здесь можно реализовать редактирование счета
-    alert('Функция редактирования будет добавлена в следующей версии');
-}
 
 // Показать/скрыть поле цели накопления
 document.addEventListener('DOMContentLoaded', function() {

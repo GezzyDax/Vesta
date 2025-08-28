@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Редактировать транзакцию{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="bi bi-pencil-square"></i> Редактировать транзакцию</h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">Главная</a></li>
+                            <li class="breadcrumb-item"><a href="{{ url_for('main.transactions') }}">Транзакции</a></li>
+                            <li class="breadcrumb-item active">Редактировать</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div>
+                    <a href="{{ url_for('main.transactions') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Назад к транзакциям
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-pencil"></i> Изменение транзакции
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <!-- Дата транзакции -->
+                            <div class="col-md-6 mb-3">
+                                <label for="date" class="form-label">Дата <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="date" name="date" 
+                                       value="{{ transaction.date.strftime('%Y-%m-%d') }}" required>
+                            </div>
+                            
+                            <!-- Сумма -->
+                            <div class="col-md-6 mb-3">
+                                <label for="amount" class="form-label">Сумма <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <input type="number" step="0.01" class="form-control" id="amount" name="amount" 
+                                           value="{{ transaction.amount }}" min="0" required>
+                                    <span class="input-group-text">₽</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Тип транзакции -->
+                            <div class="col-md-6 mb-3">
+                                <label for="transaction_type" class="form-label">Тип транзакции <span class="text-danger">*</span></label>
+                                <select class="form-select" id="transaction_type" name="transaction_type" required>
+                                    <option value="expense" {% if transaction.transaction_type == 'expense' %}selected{% endif %}>
+                                        💸 Расход
+                                    </option>
+                                    <option value="income" {% if transaction.transaction_type == 'income' %}selected{% endif %}>
+                                        💰 Доход
+                                    </option>
+                                    <option value="transfer" {% if transaction.transaction_type == 'transfer' %}selected{% endif %}>
+                                        🔄 Перевод
+                                    </option>
+                                </select>
+                            </div>
+                            
+                            <!-- Категория -->
+                            <div class="col-md-6 mb-3">
+                                <label for="category_id" class="form-label">Категория <span class="text-danger">*</span></label>
+                                <select class="form-select" id="category_id" name="category_id" required>
+                                    <option value="">Выберите категорию</option>
+                                    {% for category in categories %}
+                                        <option value="{{ category.id }}" 
+                                                {% if transaction.category_id == category.id %}selected{% endif %}>
+                                            {{ category.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Описание -->
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Описание</label>
+                            <textarea class="form-control" id="description" name="description" rows="3" 
+                                      placeholder="Описание транзакции...">{{ transaction.description or '' }}</textarea>
+                            <div class="form-text">Подробное описание транзакции (необязательно)</div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Подкатегория -->
+                            <div class="col-md-6 mb-3">
+                                <label for="subcategory" class="form-label">Подкатегория</label>
+                                <input type="text" class="form-control" id="subcategory" name="subcategory" 
+                                       value="{{ transaction.subcategory or '' }}" placeholder="Например: Продукты">
+                                <div class="form-text">Уточнение категории (необязательно)</div>
+                            </div>
+                            
+                            <!-- Номер телефона -->
+                            <div class="col-md-6 mb-3">
+                                <label for="contact_phone" class="form-label">Номер телефона</label>
+                                <input type="tel" class="form-control" id="contact_phone" name="contact_phone" 
+                                       value="{{ transaction.contact_phone or '' }}" placeholder="+7 (XXX) XXX-XX-XX">
+                                <div class="form-text">Для СБП переводов (необязательно)</div>
+                            </div>
+                        </div>
+
+                        <!-- Информация о транзакции -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="alert alert-light border">
+                                    <h6 class="alert-heading">Информация о транзакции:</h6>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <small class="text-muted">ID:</small><br>
+                                            <code>#{{ transaction.id }}</code>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <small class="text-muted">Создана:</small><br>
+                                            {{ transaction.created_at.strftime('%d.%m.%Y %H:%M') if transaction.created_at else 'Н/Д' }}
+                                        </div>
+                                        <div class="col-md-4">
+                                            <small class="text-muted">Референс:</small><br>
+                                            {{ transaction.reference or 'Н/Д' }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Кнопки управления -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Сохранить изменения
+                            </button>
+                            <a href="{{ url_for('main.transactions') }}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Отмена
+                            </a>
+                            <button type="button" class="btn btn-outline-danger ms-auto" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                <i class="bi bi-trash"></i> Удалить транзакцию
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения удаления -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle"></i> Подтверждение удаления
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Вы уверены, что хотите удалить эту транзакцию?</strong></p>
+                <div class="alert alert-warning">
+                    <div class="row">
+                        <div class="col-sm-4"><strong>Дата:</strong></div>
+                        <div class="col-sm-8">{{ transaction.date.strftime('%d.%m.%Y') }}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-4"><strong>Сумма:</strong></div>
+                        <div class="col-sm-8">{{ "{:,.2f}".format(transaction.amount) }} ₽</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-4"><strong>Описание:</strong></div>
+                        <div class="col-sm-8">{{ transaction.description or 'Без описания' }}</div>
+                    </div>
+                </div>
+                <p class="text-danger mb-0">
+                    <i class="bi bi-exclamation-circle"></i> 
+                    Это действие нельзя отменить!
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <form method="POST" action="{{ url_for('main.delete_transaction', transaction_id=transaction.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Да, удалить
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Автофокус на поле суммы
+document.getElementById('amount').focus();
+
+// Форматирование номера телефона при вводе
+function formatPhoneNumber(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    
+    if (value.startsWith('8') && value.length === 11) {
+        value = '7' + value.substring(1);
+    }
+    
+    if (value.startsWith('7') && value.length === 11) {
+        const formatted = `+7 (${value.substring(1, 4)}) ${value.substring(4, 7)}-${value.substring(7, 9)}-${value.substring(9, 11)}`;
+        e.target.value = formatted;
+    }
+}
+
+// Добавляем обработчик форматирования для поля телефона
+document.getElementById('contact_phone').addEventListener('input', formatPhoneNumber);
+</script>
+{% endblock %}

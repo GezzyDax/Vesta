@@ -747,6 +747,56 @@ class BankImportService:
             'sberbank': SberbankPDFParser()
         }
     
+    def create_counterpart_transactions(self, transactions: List[Transaction], importing_user_id: int) -> List[Transaction]:
+        """Создать встречные транзакции для СБП переводов между пользователями системы"""
+        from app.models import User as UserModel, Account as AccountModel
+        from app import db
+        
+        counterpart_transactions = []
+        
+        for transaction in transactions:
+            # Обрабатываем только СБП переводы с номером телефона
+            if not transaction.contact_phone or 'сбп' not in transaction.description.lower():
+                continue
+                
+            # Находим пользователя по номеру телефона
+            recipient_user = UserModel.find_by_phone(transaction.contact_phone)
+            if not recipient_user or recipient_user.id == importing_user_id:
+                continue  # Не найден пользователь или это тот же пользователь
+            
+            # Получаем первый активный счет получателя
+            # TODO: Использовать поле default_sbp_account после добавления через миграцию
+            recipient_account = recipient_user.accounts.filter_by(is_active=True).first()
+            if not recipient_account:
+                continue  # Нет активных счетов у получателя
+            
+            # Создаем встречную транзакцию
+            if transaction.transaction_type == 'expense':
+                # Исходящий перевод -> создаем входящий для получателя
+                counterpart_type = 'income'
+                counterpart_description = f"СБП перевод от пользователя системы - {transaction.description}"
+            else:
+                # Входящий перевод -> создаем исходящий для отправителя
+                counterpart_type = 'expense'
+                counterpart_description = f"СБП перевод пользователю системы - {transaction.description}"
+            
+            counterpart_transaction = Transaction(
+                date=transaction.date,
+                amount=transaction.amount,
+                description=counterpart_description,
+                transaction_type=counterpart_type,
+                category='Financial',
+                subcategory='СБП перевод',
+                contact_phone=transaction.contact_phone,
+                reference=f"auto_{transaction.reference}"
+            )
+            
+            # Добавляем информацию о счете получателя для последующего создания в БД
+            counterpart_transaction._recipient_account_id = recipient_account.id
+            counterpart_transactions.append(counterpart_transaction)
+        
+        return counterpart_transactions
+    
     def detect_bank_type(self, file_path: str, filename: str) -> Optional[str]:
         """Auto-detect bank type based on file format and content"""
         filename_lower = filename.lower()

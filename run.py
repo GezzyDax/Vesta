@@ -15,6 +15,8 @@ def make_shell_context():
 
 def create_tables():
     """Create tables and initial data on first startup"""
+    from app.models import User
+    
     db.create_all()
     
     # Create default users if none exist
@@ -80,6 +82,9 @@ def create_tables():
             db.session.add(category)
         
         db.session.commit()
+        
+        # Синхронизируем контакты для пользователей
+        User.sync_user_contacts()
 
 if __name__ == '__main__':
     try:

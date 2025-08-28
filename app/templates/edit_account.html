@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Редактировать счет{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="bi bi-bank"></i> Редактировать счет</h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">Главная</a></li>
+                            <li class="breadcrumb-item"><a href="{{ url_for('main.accounts') }}">Счета</a></li>
+                            <li class="breadcrumb-item active">Редактировать</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div>
+                    <a href="{{ url_for('main.accounts') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Назад к счетам
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-pencil"></i> Изменение счета
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <!-- Название счета -->
+                            <div class="col-md-6 mb-3">
+                                <label for="name" class="form-label">Название <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="name" name="name" 
+                                       value="{{ account.name }}" required maxlength="100"
+                                       placeholder="Например: Основная карта">
+                                <div class="form-text">Понятное название для вашего счета</div>
+                            </div>
+                            
+                            <!-- Банк -->
+                            <div class="col-md-6 mb-3">
+                                <label for="bank" class="form-label">Банк <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="bank" name="bank" 
+                                       value="{{ account.bank }}" required maxlength="100"
+                                       placeholder="Например: Альфа-Банк">
+                                <div class="form-text">Название банка или платежной системы</div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Тип счета -->
+                            <div class="col-md-6 mb-3">
+                                <label for="account_type" class="form-label">Тип счета <span class="text-danger">*</span></label>
+                                <select class="form-select" id="account_type" name="account_type" required>
+                                    <option value="">Выберите тип</option>
+                                    <option value="checking" {% if account.account_type == 'checking' %}selected{% endif %}>
+                                        💳 Расчетный счет
+                                    </option>
+                                    <option value="savings" {% if account.account_type == 'savings' %}selected{% endif %}>
+                                        🏦 Сберегательный счет
+                                    </option>
+                                    <option value="credit" {% if account.account_type == 'credit' %}selected{% endif %}>
+                                        💸 Кредитная карта
+                                    </option>
+                                    <option value="cash" {% if account.account_type == 'cash' %}selected{% endif %}>
+                                        💵 Наличные
+                                    </option>
+                                    <option value="investment" {% if account.account_type == 'investment' %}selected{% endif %}>
+                                        📈 Инвестиционный счет
+                                    </option>
+                                </select>
+                            </div>
+                            
+                            <!-- Валюта -->
+                            <div class="col-md-6 mb-3">
+                                <label for="currency" class="form-label">Валюта <span class="text-danger">*</span></label>
+                                <select class="form-select" id="currency" name="currency" required>
+                                    <option value="RUB" {% if account.currency == 'RUB' %}selected{% endif %}>₽ Рубли (RUB)</option>
+                                    <option value="USD" {% if account.currency == 'USD' %}selected{% endif %}>$ Доллары США (USD)</option>
+                                    <option value="EUR" {% if account.currency == 'EUR' %}selected{% endif %}>€ Евро (EUR)</option>
+                                    <option value="CNY" {% if account.currency == 'CNY' %}selected{% endif %}>¥ Юани (CNY)</option>
+                                    <option value="KZT" {% if account.currency == 'KZT' %}selected{% endif %}>₸ Тенге (KZT)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Баланс -->
+                            <div class="col-md-6 mb-3">
+                                <label for="balance" class="form-label">Текущий баланс <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <input type="number" step="0.01" class="form-control" id="balance" name="balance" 
+                                           value="{{ account.balance }}" required>
+                                    <span class="input-group-text" id="currency-symbol">₽</span>
+                                </div>
+                                <div class="form-text">Актуальный остаток средств на счете</div>
+                            </div>
+                            
+                            <!-- Владелец -->
+                            <div class="col-md-6 mb-3">
+                                <label for="user_id" class="form-label">Владелец <span class="text-danger">*</span></label>
+                                <select class="form-select" id="user_id" name="user_id" required>
+                                    <option value="">Выберите владельца</option>
+                                    {% for user in users %}
+                                        <option value="{{ user.id }}" {% if account.user_id == user.id %}selected{% endif %}>
+                                            {{ user.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">Член семьи, владеющий этим счетом</div>
+                            </div>
+                        </div>
+
+                        <!-- Статус активности -->
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
+                                       {% if account.is_active %}checked{% endif %}>
+                                <label class="form-check-label" for="is_active">
+                                    <strong>Активный счет</strong>
+                                </label>
+                                <div class="form-text">Неактивные счета скрыты от основного отображения</div>
+                            </div>
+                        </div>
+
+                        <!-- Информация о счете -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="alert alert-light border">
+                                    <h6 class="alert-heading">Информация о счете:</h6>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <small class="text-muted">ID:</small><br>
+                                            <code>#{{ account.id }}</code>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <small class="text-muted">Создан:</small><br>
+                                            {{ account.created_at.strftime('%d.%m.%Y %H:%M') if account.created_at else 'Н/Д' }}
+                                        </div>
+                                        <div class="col-md-4">
+                                            <small class="text-muted">Последняя транзакция:</small><br>
+                                            {% if account.transactions %}
+                                                {{ account.transactions|selectattr('date')|list|sort(attribute='date', reverse=true)|first|attr('date')|strftime('%d.%m.%Y') }}
+                                            {% else %}
+                                                Нет транзакций
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Кнопки управления -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Сохранить изменения
+                            </button>
+                            <a href="{{ url_for('main.accounts') }}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Отмена
+                            </a>
+                            <button type="button" class="btn btn-outline-danger ms-auto" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                <i class="bi bi-trash"></i> Удалить счет
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения удаления -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle"></i> Подтверждение удаления
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Вы уверены, что хотите удалить этот счет?</strong></p>
+                <div class="alert alert-warning">
+                    <div class="row">
+                        <div class="col-sm-4"><strong>Название:</strong></div>
+                        <div class="col-sm-8">{{ account.name }}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-4"><strong>Банк:</strong></div>
+                        <div class="col-sm-8">{{ account.bank }}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-4"><strong>Баланс:</strong></div>
+                        <div class="col-sm-8">{{ "{:,.2f}".format(account.balance) }} {{ account.currency }}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-4"><strong>Транзакций:</strong></div>
+                        <div class="col-sm-8">{{ account.transactions|length }}</div>
+                    </div>
+                </div>
+                <p class="text-danger mb-0">
+                    <i class="bi bi-exclamation-circle"></i> 
+                    Удаление счета приведет к удалению всех связанных транзакций! Это действие нельзя отменить!
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <form method="POST" action="{{ url_for('main.delete_account', account_id=account.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Да, удалить
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Автофокус на поле названия
+document.getElementById('name').focus();
+
+// Обновление символа валюты при изменении валюты
+document.getElementById('currency').addEventListener('change', function() {
+    const currencySymbol = document.getElementById('currency-symbol');
+    const currencies = {
+        'RUB': '₽',
+        'USD': '$',
+        'EUR': '€',
+        'CNY': '¥',
+        'KZT': '₸'
+    };
+    currencySymbol.textContent = currencies[this.value] || '₽';
+});
+
+// Валидация баланса
+document.getElementById('balance').addEventListener('input', function() {
+    const value = parseFloat(this.value);
+    if (value < 0) {
+        this.setCustomValidity('Баланс не может быть отрицательным');
+    } else {
+        this.setCustomValidity('');
+    }
+});
+
+// Предупреждение при смене владельца
+document.getElementById('user_id').addEventListener('change', function() {
+    const originalUserId = {{ account.user_id }};
+    if (this.value != originalUserId) {
+        const warning = document.createElement('div');
+        warning.className = 'alert alert-warning mt-2';
+        warning.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Внимание! Смена владельца счета может повлиять на существующие транзакции.';
+        
+        // Удаляем предыдущее предупреждение если есть
+        const existingWarning = this.parentNode.querySelector('.alert-warning');
+        if (existingWarning) {
+            existingWarning.remove();
+        }
+        
+        this.parentNode.appendChild(warning);
+    } else {
+        // Удаляем предупреждение если вернули исходного владельца
+        const warning = this.parentNode.querySelector('.alert-warning');
+        if (warning) {
+            warning.remove();
+        }
+    }
+});
+</script>
+{% endblock %}

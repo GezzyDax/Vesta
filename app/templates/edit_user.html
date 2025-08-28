@@ -32,6 +32,57 @@
                         </div>
                     </div>
                     
+                    <!-- Номера телефонов для СБП -->
+                    <div class="mb-3">
+                        <label class="form-label">Номера телефонов для СБП переводов</label>
+                        <div id="phone-numbers-container">
+                            {% set phones = user.phone_numbers or [] %}
+                            {% if phones %}
+                                {% for phone in phones %}
+                                <div class="input-group mb-2 phone-input-group">
+                                    <input type="tel" class="form-control phone-input" name="phone_numbers[]" 
+                                           value="{{ phone }}" placeholder="+7 (XXX) XXX-XX-XX">
+                                    <button class="btn btn-outline-danger" type="button" onclick="removePhoneInput(this)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="input-group mb-2 phone-input-group">
+                                    <input type="tel" class="form-control phone-input" name="phone_numbers[]" 
+                                           value="" placeholder="+7 (XXX) XXX-XX-XX">
+                                    <button class="btn btn-outline-danger" type="button" onclick="removePhoneInput(this)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="addPhoneInput()">
+                            <i class="bi bi-plus-circle"></i> Добавить номер
+                        </button>
+                        <div class="form-text">
+                            Номера телефонов для автоматической привязки СБП переводов. 
+                            Формат: +7XXXXXXXXXX или 8XXXXXXXXXX
+                        </div>
+                    </div>
+                    
+                    <!-- Счет по умолчанию для СБП -->
+                    <div class="mb-3">
+                        <label for="default_sbp_account_id" class="form-label">Счет по умолчанию для СБП</label>
+                        <select class="form-select" id="default_sbp_account_id" name="default_sbp_account_id">
+                            <option value="">Не выбран</option>
+                            {% for account in user.accounts.filter_by(is_active=True).all() %}
+                                <option value="{{ account.id }}" 
+                                        {% if user.default_sbp_account_id == account.id %}selected{% endif %}>
+                                    {{ account.name }} ({{ "{:,.2f}".format(account.balance) }} {{ account.currency }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">
+                            Счет, который будет использоваться по умолчанию для СБП переводов этого пользователя
+                        </div>
+                    </div>
+                    
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-check-circle"></i> Сохранить изменения
@@ -120,5 +171,62 @@
 <script>
 // Автофокус на поле имени
 document.getElementById('name').focus();
+
+// Функции для управления номерами телефонов
+function addPhoneInput() {
+    const container = document.getElementById('phone-numbers-container');
+    const newGroup = document.createElement('div');
+    newGroup.className = 'input-group mb-2 phone-input-group';
+    newGroup.innerHTML = `
+        <input type="tel" class="form-control phone-input" name="phone_numbers[]" 
+               value="" placeholder="+7 (XXX) XXX-XX-XX">
+        <button class="btn btn-outline-danger" type="button" onclick="removePhoneInput(this)">
+            <i class="bi bi-trash"></i>
+        </button>
+    `;
+    container.appendChild(newGroup);
+    
+    // Добавляем обработчик форматирования для нового поля
+    const phoneInput = newGroup.querySelector('.phone-input');
+    phoneInput.addEventListener('input', formatPhoneNumber);
+    phoneInput.focus();
+}
+
+function removePhoneInput(button) {
+    const container = document.getElementById('phone-numbers-container');
+    const groups = container.querySelectorAll('.phone-input-group');
+    
+    // Не удаляем последнее поле
+    if (groups.length > 1) {
+        button.closest('.phone-input-group').remove();
+    } else {
+        // Очищаем последнее поле вместо удаления
+        button.closest('.phone-input-group').querySelector('.phone-input').value = '';
+    }
+}
+
+// Форматирование номера телефона при вводе
+function formatPhoneNumber(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    
+    if (value.startsWith('8') && value.length === 11) {
+        value = '7' + value.substring(1);
+    }
+    
+    if (value.startsWith('7') && value.length === 11) {
+        const formatted = `+7 (${value.substring(1, 4)}) ${value.substring(4, 7)}-${value.substring(7, 9)}-${value.substring(9, 11)}`;
+        e.target.value = formatted;
+    } else if (value.length === 10) {
+        const formatted = `+7 (${value.substring(0, 3)}) ${value.substring(3, 6)}-${value.substring(6, 8)}-${value.substring(8, 10)}`;
+        e.target.value = formatted;
+    }
+}
+
+// Добавляем обработчики форматирования для всех существующих полей
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.phone-input').forEach(function(input) {
+        input.addEventListener('input', formatPhoneNumber);
+    });
+});
 </script>
 {% endblock %}

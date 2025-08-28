@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}Категории - FamilyBudget{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1><i class="bi bi-tags"></i> Управление категориями</h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('main.add_category') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Добавить категорию
+        </a>
+    </div>
+</div>
+
+<!-- Общая статистика -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="bi bi-bar-chart"></i> Статистика категорий</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <h5 class="text-primary">{{ stats.total_categories }}</h5>
+                        <p class="text-muted mb-0">Всего категорий</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h5 class="text-success">{{ stats.income_count }}</h5>
+                        <p class="text-muted mb-0">Доходы</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h5 class="text-danger">{{ stats.expense_count }}</h5>
+                        <p class="text-muted mb-0">Расходы</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h5 class="text-info">{{ stats.transfer_count }}</h5>
+                        <p class="text-muted mb-0">Переводы</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Категории по типам -->
+<div class="row">
+    <!-- Категории доходов -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5><i class="bi bi-arrow-up-circle"></i> Доходы</h5>
+            </div>
+            <div class="card-body">
+                {% if categories.income %}
+                    <div class="list-group list-group-flush">
+                        {% for category in categories.income %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ category.name }}</strong>
+                                {% if category.description %}
+                                <br><small class="text-muted">{{ category.description }}</small>
+                                {% endif %}
+                            </div>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item" href="{{ url_for('main.edit_category', category_id=category.id) }}">
+                                            <i class="bi bi-pencil"></i> Редактировать
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item text-danger" href="#"
+                                           onclick="confirmDelete({{ category.id }}, '{{ category.name }}', 'income')">
+                                            <i class="bi bi-trash"></i> Удалить
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-tags display-6 text-muted"></i>
+                        <p class="text-muted mt-2">Нет категорий доходов</p>
+                        <a href="{{ url_for('main.add_category') }}?type=income" class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-plus-circle"></i> Добавить
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Категории расходов -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5><i class="bi bi-arrow-down-circle"></i> Расходы</h5>
+            </div>
+            <div class="card-body">
+                {% if categories.expense %}
+                    <div class="list-group list-group-flush">
+                        {% for category in categories.expense %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ category.name }}</strong>
+                                {% if category.description %}
+                                <br><small class="text-muted">{{ category.description }}</small>
+                                {% endif %}
+                            </div>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item" href="{{ url_for('main.edit_category', category_id=category.id) }}">
+                                            <i class="bi bi-pencil"></i> Редактировать
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item text-danger" href="#"
+                                           onclick="confirmDelete({{ category.id }}, '{{ category.name }}', 'expense')">
+                                            <i class="bi bi-trash"></i> Удалить
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-tags display-6 text-muted"></i>
+                        <p class="text-muted mt-2">Нет категорий расходов</p>
+                        <a href="{{ url_for('main.add_category') }}?type=expense" class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-plus-circle"></i> Добавить
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Категории переводов -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5><i class="bi bi-arrow-left-right"></i> Переводы</h5>
+            </div>
+            <div class="card-body">
+                {% if categories.transfer %}
+                    <div class="list-group list-group-flush">
+                        {% for category in categories.transfer %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ category.name }}</strong>
+                                {% if category.description %}
+                                <br><small class="text-muted">{{ category.description }}</small>
+                                {% endif %}
+                            </div>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item" href="{{ url_for('main.edit_category', category_id=category.id) }}">
+                                            <i class="bi bi-pencil"></i> Редактировать
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item text-danger" href="#"
+                                           onclick="confirmDelete({{ category.id }}, '{{ category.name }}', 'transfer')">
+                                            <i class="bi bi-trash"></i> Удалить
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-tags display-6 text-muted"></i>
+                        <p class="text-muted mt-2">Нет категорий переводов</p>
+                        <a href="{{ url_for('main.add_category') }}?type=transfer" class="btn btn-outline-info btn-sm">
+                            <i class="bi bi-plus-circle"></i> Добавить
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения удаления -->
+<div class="modal fade" id="deleteCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle"></i> Подтверждение удаления
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Вы уверены, что хотите удалить эту категорию?</strong></p>
+                <div class="alert alert-warning">
+                    <div id="deleteCategoryInfo">
+                        <!-- Информация заполняется через JavaScript -->
+                    </div>
+                </div>
+                <p class="text-danger mb-0">
+                    <i class="bi bi-exclamation-circle"></i> 
+                    Это действие нельзя отменить! Категория будет удалена только если с ней не связано транзакций.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <form id="deleteCategoryForm" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Да, удалить
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Функция подтверждения удаления категории
+function confirmDelete(categoryId, categoryName, categoryType) {
+    // Определяем иконку по типу
+    let typeIcon = '';
+    let typeName = '';
+    switch(categoryType) {
+        case 'income':
+            typeIcon = '💰';
+            typeName = 'Доход';
+            break;
+        case 'expense':
+            typeIcon = '💸';
+            typeName = 'Расход';
+            break;
+        case 'transfer':
+            typeIcon = '🔄';
+            typeName = 'Перевод';
+            break;
+    }
+    
+    // Заполняем информацию о категории
+    const info = `
+        <div class="row">
+            <div class="col-sm-4"><strong>ID:</strong></div>
+            <div class="col-sm-8">#${categoryId}</div>
+        </div>
+        <div class="row">
+            <div class="col-sm-4"><strong>Название:</strong></div>
+            <div class="col-sm-8">${categoryName}</div>
+        </div>
+        <div class="row">
+            <div class="col-sm-4"><strong>Тип:</strong></div>
+            <div class="col-sm-8">${typeIcon} ${typeName}</div>
+        </div>
+    `;
+    
+    document.getElementById('deleteCategoryInfo').innerHTML = info;
+    
+    // Устанавливаем action формы
+    const deleteForm = document.getElementById('deleteCategoryForm');
+    deleteForm.action = `/categories/${categoryId}/delete`;
+    
+    // Показываем модальное окно
+    const modal = new bootstrap.Modal(document.getElementById('deleteCategoryModal'));
+    modal.show();
+}
+
+// Подсветка категории при наведении
+document.addEventListener('DOMContentLoaded', function() {
+    const listItems = document.querySelectorAll('.list-group-item');
+    listItems.forEach(item => {
+        item.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#f8f9fa';
+        });
+        item.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '';
+        });
+    });
+});
+</script>
+{% endblock %}
